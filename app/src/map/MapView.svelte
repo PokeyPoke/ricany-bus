@@ -82,7 +82,9 @@
   $effect(() => {
     if (!ready || !map) return;
     map.setFilter('lines-hl', ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
-    map.setPaintProperty('lines', 'line-opacity', $highlightLine || $tripOverlay ? 0.3 : 0.85);
+    const dim = !!($highlightLine || $tripOverlay);
+    map.setPaintProperty('lines', 'line-opacity', dim ? 0.3 : 0.85);
+    map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.3 : 0.9);
   });
   $effect(() => {
     if (!ready || !map) return;
@@ -103,7 +105,7 @@
   });
 </script>
 
-<div class="map" bind:this={el} class:picking={$pickTarget !== null}></div>
+<div class="map" bind:this={el}></div>
 <button class="locate" aria-label={$t('locate')} onclick={locate}>📍</button>
 
 <style>
