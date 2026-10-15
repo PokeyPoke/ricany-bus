@@ -17,6 +17,7 @@ Mobile web app that plans trips in Říčany using **only** the free MHD Říča
 - `npm test` / `npm run typecheck` — all workspaces
 - `npm run data` — regenerate timetable data from the live PID feed
 - `npm run dev -w app` — local dev server
+- `npx playwright install chromium` (once), then `npm run e2e -w app` — Playwright e2e on a Pixel 7 viewport with mocked external APIs
 - `cd worker && npx --yes wrangler@4 deploy` — deploy the Worker
 
 Data: © ROPID / PID open data, © OpenStreetMap contributors, Nextbike.
