@@ -20,4 +20,7 @@ describe('hashRoute', () => {
     expect(parseHash('#/plan?mode=xyz&from=a,b,c')).toMatchObject({ name: 'plan', mode: 'now', from: undefined });
     expect(parseHash('#/line/3')).toEqual({ name: 'line', number: '3', dir: 0, stopId: undefined });
   });
+  it('does not throw on malformed percent-encoding', () => {
+    expect(parseHash('#/stop/%E0%A4%A')).toEqual({ name: 'home' });
+  });
 });

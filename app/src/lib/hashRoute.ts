@@ -21,7 +21,12 @@ const opt = (v: string | null) => v ?? undefined;
 export function parseHash(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#/, '').split('?');
   const q = new URLSearchParams(query);
-  const parts = path.split('/').filter(Boolean).map(decodeURIComponent);
+  let parts: string[];
+  try {
+    parts = path.split('/').filter(Boolean).map(decodeURIComponent);
+  } catch {
+    return { name: 'home' };
+  }
   switch (parts[0]) {
     case 'plan': {
       const m = q.get('mode');
