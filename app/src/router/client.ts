@@ -1,12 +1,17 @@
+import type { StopsFile, TimetableFile } from '@rb/shared';
 import type { BikeStation, PlanRequest, PlanResult } from './types';
 
+export interface RouterData { stops: StopsFile['stops']; timetable: TimetableFile }
+
 let worker: Worker | null = null;
+let sentData: RouterData | null = null; // the data object the live worker was initialised with
 let nextId = 0;
 const pending = new Map<number, { resolve: (r: PlanResult) => void; reject: (e: Error) => void }>();
 
 function failAll(msg: string) {
   worker?.terminate?.();
   worker = null;
+  sentData = null;
   const all = [...pending.values()];
   pending.clear();
   for (const p of all) p.reject(new Error(msg));
@@ -28,10 +33,16 @@ function getWorker(): Worker {
   return worker;
 }
 
-export function planInWorker(req: PlanRequest, bikes: BikeStation[] | null): Promise<PlanResult> {
+/** The worker never fetches: it plans on exactly the stops/timetable the page already loaded, so indexes always agree. */
+export function planInWorker(req: PlanRequest, bikes: BikeStation[] | null, data: RouterData): Promise<PlanResult> {
   const id = ++nextId;
   return new Promise((resolve, reject) => {
     pending.set(id, { resolve, reject });
-    getWorker().postMessage({ id, req: structuredClone(req), bikes: bikes ? structuredClone(bikes) : null });
+    const w = getWorker();
+    if (sentData !== data) {
+      sentData = data;
+      w.postMessage({ init: { stops: data.stops, tt: data.timetable } });
+    }
+    w.postMessage({ id, req: structuredClone(req), bikes: bikes ? structuredClone(bikes) : null });
   });
 }

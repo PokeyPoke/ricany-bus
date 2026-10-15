@@ -70,15 +70,19 @@ function dedupe(list: Itinerary[]): Itinerary[] {
   return list.filter((it) => { const s = signature(it); if (seen.has(s)) return false; seen.add(s); return true; });
 }
 
-function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAccess[], egr: StopAccess[]): Itinerary[] {
+function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAccess[], egr: StopAccess[], rolled = false): Itinerary[] {
   const net = ctx.netFor(date);
   const out: Itinerary[] = [];
   let t = sec;
-  for (let iter = 0; iter < 12 && out.length < MAX_RESULTS * 2 && t < sec + HORIZON; iter++) {
+  // After a day rollover the search starts at midnight, so measure the horizon from the first departure found.
+  let base: number | null = rolled ? null : sec;
+  for (let iter = 0; iter < 12 && out.length < MAX_RESULTS * 2 && (base === null || t < base + HORIZON); iter++) {
     const js = raptor(net, acc, egr, t);
     if (!js.length) break;
     out.push(...js.map((j) => toItinerary(net, j)));
-    t = Math.min(...js.map((j) => j.firstDepart - j.access.sec)) + 60;
+    const first = Math.min(...js.map((j) => j.firstDepart - j.access.sec));
+    base ??= first;
+    t = first + 60;
   }
   return dedupe(out).sort((a, b) => a.arrive - b.arrive || b.depart - a.depart).slice(0, MAX_RESULTS);
 }
@@ -109,7 +113,7 @@ export function search(ctx: PlanContext, req: PlanRequest, acc: StopAccess[], eg
   if (!acc.length || !egr.length) return [];
   if (req.mode === 'arr') return searchArriveBy(ctx, req.date, req.sec, acc, egr);
   let r = searchForward(ctx, req.date, req.sec, acc, egr);
-  for (let d = 1; rollover && !r.length && d <= ROLLOVER_DAYS; d++) r = searchForward(ctx, addDays(req.date, d), 0, acc, egr);
+  for (let d = 1; rollover && !r.length && d <= ROLLOVER_DAYS; d++) r = searchForward(ctx, addDays(req.date, d), 0, acc, egr, true);
   return r;
 }
 

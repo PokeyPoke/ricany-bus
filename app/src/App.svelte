@@ -13,7 +13,7 @@
   import { loadData, daysLeft, type AppData } from './lib/data';
   import { bikesLayerOn } from './lib/ui';
 
-  let data = $state<AppData | null>(null);
+  let data = $state.raw<AppData | null>(null); // raw: large, immutable, and must be structured-cloneable for the router worker
   let failed = $state(false);
   let online = $state(navigator.onLine);
 

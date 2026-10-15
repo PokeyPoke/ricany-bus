@@ -40,7 +40,7 @@
 <ol class="legs">
   {#each it.legs as l, i (i)}
     <li class="leg {l.kind}">
-      <div class="time">{formatHM(l.depart)}{#if l.kind === 'bus'}<DelayBadge sec={ov.boardDelay[i]} live={true} />{/if}</div>
+      <div class="time">{formatHM(l.depart)}{#if l.kind === 'bus' && $delaysOk}<DelayBadge sec={ov.boardDelay[i]} live={$delaysOk} />{/if}</div>
       <div class="body">
         {#if l.kind === 'walk'}
           <div>🚶 {$t('walkFor', { n: mins(l.depart, l.arrive), m: l.meters })}</div>
@@ -55,7 +55,7 @@
           <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.from].id })}>{stopLabel(l.from)}</button>
           <div class="small muted">{$t('stopsCount', { n: l.stopCount })}</div>
           <div class="arr">
-            {formatHM(l.arrive)}<DelayBadge sec={ov.alightDelay[i]} live={true} />
+            {formatHM(l.arrive)}{#if $delaysOk}<DelayBadge sec={ov.alightDelay[i]} live={$delaysOk} />{/if}
             <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.to].id })}>{stopLabel(l.to)}</button>
           </div>
         {/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
   import { get } from 'svelte/store';
-  import { hmToSec, secToHM } from '@rb/shared';
+  import { hmToSec, secToHM, pragueNow } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { route, navigate } from '../lib/nav';
   import type { Route } from '../lib/hashRoute';
@@ -50,7 +50,7 @@
     if (!r.from || !r.to) return null;
     const n = r.mode === 'now' ? $now : null;
     if (n) return { from: r.from, to: r.to, mode: 'dep', date: n.date, sec: Math.floor(n.sec / 60) * 60 };
-    const today = get(now);
+    const today = pragueNow();
     return { from: r.from, to: r.to, mode: r.mode === 'arr' ? 'arr' : 'dep', date: r.date ?? today.date, sec: hmToSec(r.time ?? secToHM(today.sec)) };
   });
 
@@ -67,7 +67,7 @@
     let cancelled = false;
     busy = true;
     failed = false;
-    planInWorker(q, b)
+    planInWorker(q, b, data)
       .then((res) => {
         if (cancelled) return;
         result = res; busy = false;
@@ -94,11 +94,11 @@
   const open = (sel: string) => navigate({ ...r, sel });
   const swap = () => update({ from: r.to, to: r.from });
   function setMode(mode: PlanRoute['mode']) {
-    const n = get(now);
+    const n = pragueNow();
     update(mode === 'now' ? { mode, time: undefined, date: undefined } : { mode, time: r.time ?? secToHM(n.sec), date: r.date ?? n.date });
   }
   function shift(minutes: number) {
-    const n = get(now);
+    const n = pragueNow();
     const base = r.mode === 'now' ? n.sec : hmToSec(r.time ?? secToHM(n.sec));
     const sec = Math.max(0, Math.min(86340, base + minutes * 60));
     update({ mode: r.mode === 'arr' ? 'arr' : 'dep', time: secToHM(sec), date: r.date ?? n.date });

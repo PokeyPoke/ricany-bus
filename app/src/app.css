@@ -34,6 +34,10 @@ h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color
 .banner { background: var(--warn); color: #fff; padding: 6px 12px; font-size: 0.9rem; text-align: center; }
 .tag-free { background: var(--ok); color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 0.8rem; font-weight: 600; }
 .tag-paid { background: var(--warn); color: #fff; border-radius: 6px; padding: 1px 6px; font-size: 0.8rem; font-weight: 600; }
+/* dark theme: --ok/--warn are light, so use dark text on them (WCAG AA) */
+@media (prefers-color-scheme: dark) {
+  .banner, .tag-free, .tag-paid { color: #06121f; }
+}
 .seg { display: flex; background: var(--chip); border-radius: 10px; padding: 3px; gap: 3px; }
 .seg button { flex: 1; border-radius: 8px; min-height: 40px; }
 .seg button[aria-pressed='true'] { background: var(--bg); box-shadow: var(--shadow); font-weight: 600; }

@@ -3,30 +3,26 @@ import { buildNetwork, type Network } from './network';
 import { planTrip } from './plan';
 import type { BikeStation, PlanRequest } from './types';
 
-const base = `${import.meta.env.BASE_URL}data/`;
 const scope = self as unknown as { onmessage: ((e: MessageEvent) => void) | null; postMessage(m: unknown): void };
-let ready: Promise<{ stops: StopsFile['stops']; tt: TimetableFile }> | null = null;
-const nets = new Map<string, Network>();
 
-async function getJson<T>(name: string): Promise<T> {
-  const r = await fetch(`${base}${name}`);
-  if (!r.ok) throw new Error(`${name}: HTTP ${r.status}`);
-  return (await r.json()) as T;
-}
+// Data is pushed by the page (single source of truth) -- the worker never fetches its own copy.
+let data: { stops: StopsFile['stops']; tt: TimetableFile } | null = null;
+let nets = new Map<string, Network>();
 
-function load() {
-  ready ??= Promise.all([getJson<StopsFile>('stops.json'), getJson<TimetableFile>('timetable.json')]).then(([s, tt]) => ({ stops: s.stops, tt }));
-  return ready;
-}
+type Msg =
+  | { init: { stops: StopsFile['stops']; tt: TimetableFile } }
+  | { id: number; req: PlanRequest; bikes: BikeStation[] | null };
 
-scope.onmessage = async (e: MessageEvent<{ id: number; req: PlanRequest; bikes: BikeStation[] | null }>) => {
-  const { id, req, bikes } = e.data;
-  let data;
-  try {
-    data = await load();
-  } catch (err) {
-    ready = null;
-    scope.postMessage({ id, error: String(err) });
+scope.onmessage = (e: MessageEvent<Msg>) => {
+  const m = e.data;
+  if ('init' in m) {
+    data = m.init;
+    nets = new Map();
+    return;
+  }
+  const { id, req, bikes } = m;
+  if (!data) {
+    scope.postMessage({ id, error: 'router worker not initialised' });
     return;
   }
   try {

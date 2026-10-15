@@ -8,7 +8,14 @@ export const dayTypeOf = (date: string): DayType => {
 };
 
 export function sampleDate(tt: TimetableFile, dayType: DayType, from: string): string | null {
-  return Object.keys(tt.servicesByDate).sort().find((d) => d >= from && dayTypeOf(d) === dayType && tt.servicesByDate[d].length > 0) ?? null;
+  const dates = Object.keys(tt.servicesByDate).sort();
+  const key = (d: string) => [...tt.servicesByDate[d]].sort().join('|');
+  // A weekday holiday (e.g. 28.10.) runs the Saturday timetable and must not represent "Po–Pá".
+  const sat = dates.find((d) => d >= from && dayTypeOf(d) === 'saturday' && tt.servicesByDate[d].length > 0)
+    ?? dates.find((d) => dayTypeOf(d) === 'saturday' && tt.servicesByDate[d].length > 0);
+  const satKey = sat ? key(sat) : null;
+  return dates.find((d) => d >= from && dayTypeOf(d) === dayType && tt.servicesByDate[d].length > 0
+    && !(dayType === 'weekday' && satKey !== null && key(d) === satKey)) ?? null;
 }
 
 export function stopTimetable(tt: TimetableFile, routeId: FreeRouteId, directionId: number, stop: number, date: string): Map<number, number[]> {

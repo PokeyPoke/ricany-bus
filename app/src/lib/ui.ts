@@ -11,6 +11,15 @@ export const focusPoints = writable<[number, number][] | null>(null);
 export const userPos = writable<{ lat: number; lon: number } | null>(null);
 export const planMarkers = writable<{ from?: PlaceRef; to?: PlaceRef }>({});
 export const now = readable(pragueNow(), (set) => {
-  const i = setInterval(() => set(pragueNow()), 30_000);
-  return () => clearInterval(i);
+  // Svelte keeps the last value while unsubscribed, so refresh immediately on (re)subscribe
+  // and whenever the tab becomes visible again.
+  const tick = () => set(pragueNow());
+  tick();
+  const i = setInterval(tick, 30_000);
+  const onVis = () => { if (document.visibilityState === 'visible') tick(); };
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVis);
+  return () => {
+    clearInterval(i);
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVis);
+  };
 });

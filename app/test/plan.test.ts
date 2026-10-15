@@ -35,6 +35,10 @@ describe('planTrip', () => {
   it('rolls over to the next day when nothing runs today (evening and Sunday)', () => {
     const evening = dep(at(0), at(5), H(22, 0));
     expect(evening.free[0]).toMatchObject({ date: '20261020', arrive: H(8, 33) });
+    expect(evening.free.map((f) => f.arrive)).toEqual([H(8, 33), H(9, 0)]);
+    // horizon counts from the first bus found after rollover, not from midnight: later buses are still listed
+    const sparse = dep(at(0), at(2), H(22, 0));
+    expect(sparse.free.map((f) => [f.date, f.arrive])).toEqual([['20261020', H(8, 10)], ['20261020', H(8, 40)]]);
     const sunday = dep(at(0), at(5), H(10, 0), '20261018');
     expect(sunday.free[0]).toMatchObject({ date: '20261019', arrive: H(8, 33) });
   });

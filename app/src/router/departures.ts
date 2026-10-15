@@ -16,3 +16,9 @@ export function departuresAt(net: Network, stop: number, fromSec: number, limit:
   }
   return out.sort((a, b) => a.dep - b.dep).slice(0, limit);
 }
+
+/** Board filter: keep departures whose delay-adjusted time is not more than a minute past, order by that time, then limit. */
+export function boardWindow<T extends { dep: number }>(list: T[], nowSec: number, delayOf: (d: T) => number | null, limit: number): T[] {
+  const adj = (d: T) => d.dep + (delayOf(d) ?? 0);
+  return list.filter((d) => adj(d) >= nowSec - 60).sort((a, b) => adj(a) - adj(b)).slice(0, limit);
+}

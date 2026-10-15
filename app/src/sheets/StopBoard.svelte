@@ -2,12 +2,12 @@
   import { addDays, formatHM, haversine, LINE_ORDER, type FreeRouteId } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { netFor } from '../lib/network';
-  import { departuresAt } from '../router/departures';
+  import { departuresAt, boardWindow } from '../router/departures';
   import { tripDelay } from '../router/delays';
   import { delays, delaysOk, useDelays, bikes, useBikes } from '../lib/live';
   import { now, focusPoints, highlightLine, tripOverlay } from '../lib/ui';
   import { navigate } from '../lib/nav';
-  import { t } from '../lib/i18n';
+  import { t, lang } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
   import DelayBadge from '../components/DelayBadge.svelte';
 
@@ -33,11 +33,16 @@
   const deps = $derived.by(() => {
     const n = $now;
     const collect = (date: string, from: number, day: number) =>
-      group.flatMap((i) => departuresAt(netFor(data, date), i, from, LIMIT).map((d) => ({ ...d, stop: i, day })));
-    const today = collect(n.date, n.sec - 60, 0).sort((a, b) => a.dep - b.dep).slice(0, LIMIT);
+      group.flatMap((i) => departuresAt(netFor(data, date), i, from, 40).map((d) => ({ ...d, stop: i, day })));
+    // From 15 min back so late buses still show; the delay-adjusted time decides whether they are gone.
+    const today = boardWindow(collect(n.date, n.sec - 15 * 60, 0), n.sec, (d) => tripDelay($delays, d.tripId, d.serviceDate, d.seq), LIMIT);
     if (today.length >= LIMIT) return today;
-    const tomorrow = collect(addDays(n.date, 1), 0, 1).sort((a, b) => a.dep - b.dep).slice(0, LIMIT - today.length);
-    return [...today, ...tomorrow];
+    // Next date with service (up to 3 days ahead), e.g. Saturday evening -> Monday.
+    for (let k = 1; k <= 3; k++) {
+      const next = collect(addDays(n.date, k), 0, k).sort((a, b) => a.dep - b.dep).slice(0, LIMIT - today.length);
+      if (next.length) return [...today, ...next];
+    }
+    return today;
   });
 
   const nearestBike = $derived.by(() => {
@@ -45,8 +50,14 @@
     return $bikes.map((b) => ({ b, m: Math.round(haversine(stop.lat, stop.lon, b.lat, b.lon)) })).sort((x, y) => x.m - y.m)[0];
   });
 
+  function dayLabel(day: number): string {
+    if (day === 1) return $t('tomorrow');
+    const d = addDays($now.date, day);
+    return new Intl.DateTimeFormat($lang === 'en' ? 'en-GB' : 'cs-CZ', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC' })
+      .format(new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))));
+  }
   function whenLabel(dep: number, delay: number | null, day: number): string {
-    if (day > 0) return $t('tomorrow');
+    if (day > 0) return dayLabel(day);
     const diff = Math.round((dep + (delay ?? 0) - $now.sec) / 60);
     if (diff <= 0) return $t('nowShort');
     return diff < 60 ? $t('inMin', { n: diff }) : '';

@@ -7,7 +7,7 @@
   import { RIC_CENTER } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
-  import { bikes, useBikes } from '../lib/live';
+  import { bikes, bikesOk, useBikes } from '../lib/live';
   import { bikesLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
@@ -78,6 +78,14 @@
     if (!ready || !map) return;
     setData('bikes', bikesGeoJson($bikes ?? []));
     for (const id of ['bikes', 'bikes-count']) map.setLayoutProperty(id, 'visibility', $bikesLayerOn ? 'visible' : 'none');
+  });
+  $effect(() => {
+    if (!ready || !map) return;
+    // stale bike data: fade the markers
+    const o = $bikesOk ? 1 : 0.35;
+    map.setPaintProperty('bikes', 'circle-opacity', o);
+    map.setPaintProperty('bikes', 'circle-stroke-opacity', o);
+    map.setPaintProperty('bikes-count', 'text-opacity', o);
   });
   $effect(() => {
     if (!ready || !map) return;
