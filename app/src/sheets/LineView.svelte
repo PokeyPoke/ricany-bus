@@ -15,7 +15,13 @@
   const selIdx = $derived.by(() => {
     if (!direction) return -1;
     const i = stopId ? data.stops.findIndex((s) => s.id === stopId) : -1;
-    return direction.stops.includes(i) ? i : direction.stops[0];
+    if (direction.stops.includes(i)) return i;
+    // Default to the first stop that actually has departures on the sampled day (some patterns, e.g. Oáza on line 1, run only on other day types).
+    if (line && date) {
+      const served = direction.stops.find((s) => stopTimetable(data.timetable, line.routeId, direction.directionId, s, date).size > 0);
+      if (served !== undefined) return served;
+    }
+    return direction.stops[0];
   });
   const table = $derived(line && direction && date && selIdx >= 0 ? [...stopTimetable(data.timetable, line.routeId, direction.directionId, selIdx, date)] : []);
 
