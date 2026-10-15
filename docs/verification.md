@@ -3,8 +3,8 @@
 ## Automated
 - Unit tests: 93 passed (`npm test`: shared 11, pipeline 17, worker 8, app 57); `npm run typecheck` 0 errors
 - Golden RAPTOR vs brute force on real data: passed (part of the app unit tests)
-- E2E (Pixel 7 viewport, mocked externals): 10 passed locally and in CI (9 original + a line 1 regression test)
-- CI: https://github.com/PokeyPoke/ricany-bus/actions/runs/38800275212 (test + e2e green)  ·  Deploy: https://github.com/PokeyPoke/ricany-bus/actions/runs/38800274984
+- E2E (Pixel 7 viewport, mocked externals): 10 passed locally and in CI (9 original + a line 1 regression test; the 10-test commit is covered by the CI run below)
+- CI: https://github.com/PokeyPoke/ricany-bus/actions/runs/38801079378 (head bdcabb3, 10-test e2e; test + e2e green; earlier run 38800275212 covered the first 9 tests)  ·  Deploy: https://github.com/PokeyPoke/ricany-bus/actions/runs/38800274984
 
 ## Live site
 - URL: https://pokeypoke.github.io/ricany-bus/ — verified with Playwright (Chromium, 390x844) at ~17:55 Prague time; no browser extension was available, so screenshots replace the walkthrough GIF.
@@ -24,7 +24,7 @@
 - Official (25): 05:32 06:02 06:32 07:02 07:32 08:02 08:32 09:02 10:02 11:02 12:02 12:32 13:02 13:32 14:02 14:32 15:02 15:32 16:02 16:32 17:02 18:02 19:02 20:02 21:02
 - App (25): identical list (weekday 2026-10-15)
 - First 5 and last 2 compared: 05:32 06:02 06:32 07:02 07:32 ... 20:02 21:02 — match. Whole list matches.
-- Result: match. The PDF footer says 28.10.2026 runs as Saturday (a holiday); the controller verified in `timetable.json` that the data gives that date Saturday service.
+- Result: match. The PDF footer says 28.10.2026 runs as Saturday (a holiday); the controller verified in `timetable.json` that the data gives that date Saturday service (`servicesByDate['20261028'] = ['0000010-1']`, the Saturday service id).
 
 ## Definition of done (spec §8)
 1. ≤ 3 taps from my location to free-only results: e2e "≤ 3 taps" test (geolocated start asserted in the URL, results shown) and the free-only badge assertions pass.
