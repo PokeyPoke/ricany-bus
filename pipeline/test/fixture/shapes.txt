@@ -1,0 +1,5 @@
+shape_id,shape_pt_lat,shape_pt_lon,shape_pt_sequence,shape_dist_traveled
+L1731V1,50.000000,14.660000,3,1.32
+L1731V1,49.990000,14.650000,1,0
+L1731V1,49.995000,14.655000,2,0.66
+L1761V1,49.780000,14.680000,1,0

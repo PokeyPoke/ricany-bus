@@ -1,0 +1,8 @@
+stop_id,stop_name,stop_lat,stop_lon,zone_id,stop_url,location_type,parent_station,wheelchair_boarding,level_id,platform_code
+UA,"Říčany,Alfa",49.990000,14.650000,1,,0,,0,,A
+UB,"Říčany,Beta",49.995000,14.655000,1,,0,,0,,A
+UC,"Říčany,Gamma",50.000000,14.660000,1,,0,,0,,A
+UD,"Říčany,Delta",50.001500,14.661000,1,,0,,0,,B
+UE,"Říčany,Epsilon",50.005000,14.670000,1,,0,,0,,A
+UX,"Benešov,X",49.780000,14.680000,1,,0,,0,,
+UY,"Benešov,Y",49.790000,14.690000,1,,0,,0,,

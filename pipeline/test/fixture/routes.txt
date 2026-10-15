@@ -1,0 +1,5 @@
+route_id,agency_id,route_short_name,route_long_name,route_type,route_url,route_color,route_text_color,is_night,is_regional,is_substitute_transport
+L1731,99,MHD 1,"Oáza/Kuří - Strašín",3,,007DA8,FFFFFF,0,0,0
+L1733,99,MHD 3,"Jažlovice - Pacov",3,,007DA8,FFFFFF,0,0,0
+L1761,99,MHD 1,"MHD Benešov ORANŽOVÁ Albert - Terminál",3,,007DA8,FFFFFF,0,0,0
+L364,99,364,"Praha,Depo Hostivař - Doubek",3,,007DA8,FFFFFF,0,1,0

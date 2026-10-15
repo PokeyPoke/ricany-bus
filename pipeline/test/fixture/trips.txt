@@ -1,0 +1,7 @@
+route_id,service_id,trip_id,trip_headsign,direction_id,shape_id
+L1731,W,1731_1,"Říčany,Gamma",0,L1731V1
+L1731,W,1731_2,"Říčany,Alfa",1,L1731V2
+L1731,S,1731_3,"Říčany,Gamma",0,L1731V1
+L1733,W,1733_1,"Říčany,Epsilon",0,L1733V1
+L1761,W,1761_1,"Benešov,X",0,L1761V1
+L364,W,364_1,"Doubek",0,L364V1
