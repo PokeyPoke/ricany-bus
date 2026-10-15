@@ -53,7 +53,6 @@ describe(`golden: real data on ${date}`, () => {
       expect(got, `${stops[from].name} → ${stops[to].name} @ ${t0}`).toBe(brute(net, from, to, t0));
       compared++;
     }
-    console.log(`GOLDEN compared=${compared}`);
     expect(compared).toBeGreaterThan(30);
   });
 
@@ -66,7 +65,6 @@ describe(`golden: real data on ${date}`, () => {
       planTrip(ctx, { from: { lat: a.lat, lon: a.lon, name: 'a' }, to: { lat: b.lat, lon: b.lon, name: 'b' }, mode: 'dep', date, sec: 7 * 3600 + i * 600 }, null);
     }
     const avg = (performance.now() - t) / 20;
-    console.log(`GOLDEN avg_ms=${avg.toFixed(2)}`);
     expect(avg).toBeLessThan(100);
   });
 
