@@ -9,10 +9,11 @@ export interface Journey {
   arrive: number; firstDepart: number;
 }
 
+type RidePrev = { kind: 'ride'; p: number; trip: number; boardPos: number; alightPos: number; boardStop: number };
 type Prev =
   | { kind: 'access'; a: StopAccess }
-  | { kind: 'ride'; p: number; trip: number; boardPos: number; alightPos: number; boardStop: number }
-  | { kind: 'foot'; from: number; sec: number };
+  | RidePrev
+  | { kind: 'foot'; from: number; sec: number; ride: RidePrev };
 
 /** Index of the trip with the smallest dep[pos] ≥ t (linear scan: robust to overtaking), or −1. */
 function earliestTrip(pat: NetPattern, pos: number, t: number): number {
@@ -77,13 +78,18 @@ export function raptor(net: Network, access: StopAccess[], egress: StopAccess[],
       }
     }
 
+    // Snapshot the round's ride labels so footpaths never chain or relax from a foot label.
+    const rideLabels = new Map<number, { t: number; ride: RidePrev }>();
     for (const s of rideMarked) {
-      if (prev[k][s]?.kind !== 'ride') continue;
+      const pr = prev[k][s];
+      if (pr?.kind === 'ride') rideLabels.set(s, { t: tau[k][s], ride: pr });
+    }
+    for (const [s, { t: rt, ride }] of rideLabels) {
       for (const [to, sec] of net.stops[s].transfers) {
-        const t = tau[k][s] + sec;
+        const t = rt + sec;
         if (t < best[to] && t < bestDest) {
           tau[k][to] = t; best[to] = t; byRide[k][to] = 0;
-          prev[k][to] = { kind: 'foot', from: s, sec };
+          prev[k][to] = { kind: 'foot', from: s, sec, ride };
           marked.add(to);
         }
       }
@@ -111,9 +117,10 @@ function reconstruct(net: Network, prev: (Prev | undefined)[][], k: number, egre
   for (;;) {
     const pr = prev[round][stop]!;
     if (pr.kind === 'access') { access = pr.a; break; }
-    if (pr.kind === 'foot') { steps.unshift({ kind: 'foot', from: pr.from, to: stop, sec: pr.sec }); stop = pr.from; continue; }
-    steps.unshift({ kind: 'ride', p: pr.p, trip: pr.trip, boardPos: pr.boardPos, alightPos: pr.alightPos });
-    stop = pr.boardStop;
+    let r: RidePrev;
+    if (pr.kind === 'foot') { steps.unshift({ kind: 'foot', from: pr.from, to: stop, sec: pr.sec }); r = pr.ride; } else r = pr;
+    steps.unshift({ kind: 'ride', p: r.p, trip: r.trip, boardPos: r.boardPos, alightPos: r.alightPos });
+    stop = r.boardStop;
     round--;
   }
   const first = steps.find((s): s is RideStep => s.kind === 'ride')!;

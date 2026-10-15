@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildNetwork } from '../src/router/network';
 import { raptor } from '../src/router/raptor';
 import { stops, timetable, H } from './fixtures/net';
+import type { Network } from '../src/router/network';
 
 const net = buildNetwork(stops, timetable, '20261019');
 const at = (stop: number) => [{ stop, sec: 0 }];
@@ -50,5 +51,35 @@ describe('raptor', () => {
     const js = raptor(net, [{ stop: 0, sec: 120 }], [{ stop: 2, sec: 90 }], H(7, 58));
     expect(js[0].arrive).toBe(H(8, 10) + 90);
     expect(raptor(net, [{ stop: 0, sec: 180 }], [{ stop: 2, sec: 0 }], H(7, 58))[0].firstDepart).toBe(H(8, 30));
+  });
+});
+
+describe('footpath relaxation', () => {
+  it('never chains footpaths: relaxes only from ride labels of the round', () => {
+    // X(0) -> B(2) arrives 1000; X -> A(1) arrives 500. A<->B 100 s, B<->C 100 s. Egress at C.
+    const mk = (i: number, transfers: [number, number][]) => ({ id: 'T' + i, name: 'T' + i, platform: '', lat: 0, lon: 0, lines: [], transfers });
+    const stopsX = [mk(0, []), mk(1, [[2, 100]]), mk(2, [[1, 100], [3, 100]]), mk(3, [[2, 100]])] as unknown as Network['stops'];
+    const pat = (to: number, arr: number) => ({
+      routeId: 'L1731' as const, directionId: 0, headsign: 'h', stops: [0, to], seq: [1, 2],
+      trips: [{ id: 't' + to, serviceDate: '20261019', arr: [0, arr], dep: [0, arr] }],
+    });
+    // pattern order matters: B's ride is relaxed before A's
+    const patterns = [pat(2, 1000), pat(1, 500)];
+    const stopPatterns = stopsX.map(() => [] as { p: number; pos: number }[]);
+    patterns.forEach((p, pi) => p.stops.forEach((s, pos) => stopPatterns[s].push({ p: pi, pos })));
+    const net2: Network = { date: '20261019', stops: stopsX, patterns, stopPatterns };
+    const js = raptor(net2, [{ stop: 0, sec: 0 }], [{ stop: 3, sec: 0 }], 0);
+    expect(js.length).toBeGreaterThan(0);
+    for (const j of js) {
+      for (let i = 1; i < j.steps.length; i++) {
+        expect(j.steps[i].kind === 'foot' && j.steps[i - 1].kind === 'foot').toBe(false);
+      }
+      let t = 0;
+      for (const st of j.steps) {
+        if (st.kind === 'ride') t = net2.patterns[st.p].trips[st.trip].arr[st.alightPos];
+        else t += st.sec;
+      }
+      expect(t + j.egress.sec).toBe(j.arrive);
+    }
   });
 });
