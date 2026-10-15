@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { pragueNow } from '@rb/shared';
   import Home from './sheets/Home.svelte';
+  import Planner from './sheets/Planner.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
   import { route, navigate } from './lib/nav';
@@ -40,7 +41,7 @@
       <MapView {data} />
       <BottomSheet>
         {#if $route.name === 'plan'}
-          <!-- SHEET:plan -->
+          <Planner {data} />
         {:else if $route.name === 'stop'}
           <!-- SHEET:stop -->
         {:else if $route.name === 'line'}
