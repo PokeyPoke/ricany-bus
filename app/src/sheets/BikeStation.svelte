@@ -1,0 +1,56 @@
+<script lang="ts">
+  import { haversine } from '@rb/shared';
+  import type { AppData } from '../lib/data';
+  import { bikes, bikesOk, bikesAt, useBikes } from '../lib/live';
+  import { focusPoints, tripOverlay, highlightLine } from '../lib/ui';
+  import { navigate } from '../lib/nav';
+  import { t, lang } from '../lib/i18n';
+
+  let { data, uid }: { data: AppData; uid: number } = $props();
+  $effect(() => useBikes());
+  const st = $derived($bikes?.find((b) => b.uid === uid) ?? null);
+  const stLon = $derived(st?.lon ?? null);
+  const stLat = $derived(st?.lat ?? null);
+  $effect(() => {
+    tripOverlay.set(null);
+    highlightLine.set(null);
+    // $bikes refreshes every 60 s with new objects; depend only on coordinates
+    if (stLon != null && stLat != null) focusPoints.set([[stLon, stLat]]);
+  });
+  const nearStops = $derived(st
+    ? data.stops.map((s) => ({ s, m: Math.round(haversine(st.lat, st.lon, s.lat, s.lon)) })).sort((a, b) => a.m - b.m)
+        .filter((x, i, arr) => arr.findIndex((y) => y.s.name === x.s.name) === i).slice(0, 3)
+    : []);
+  const updated = $derived($bikesAt ? new Date($bikesAt).toLocaleTimeString($lang === 'cs' ? 'cs-CZ' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
+  const here = () => (st ? { lat: st.lat, lon: st.lon, name: st.name } : undefined);
+</script>
+
+<div class="sheet-header">
+  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}>←</button>
+  <h1>🚲 {st?.name ?? $t('bikes')}</h1>
+</div>
+
+{#if st}
+  <p class="big-num"><strong>{$t('bikesAvailable', { n: st.bikes })}</strong> · {$t('freeRacks', { n: st.freeRacks })}</p>
+  {#if updated}<p class="muted small">{$t('updatedAt', { t: updated })}</p>{/if}
+  <p class="muted small">{$t('paid')} · <a href="https://www.nextbikeczech.com/" target="_blank" rel="noopener">{$t('openNextbike')}</a></p>
+  <div class="chips">
+    <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', from: here() })}>{$t('planFromHere')}</button>
+    <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', to: here() })}>{$t('planToHere')}</button>
+  </div>
+  <h2>🚏</h2>
+  <ul class="list">
+    {#each nearStops as x (x.s.id)}<li><button class="row" onclick={() => navigate({ name: 'stop', stopId: x.s.id })}>{x.s.name} · {x.m} m</button></li>{/each}
+  </ul>
+{:else if !$bikesOk}
+  <p class="warn">{$t('bikeUnavailable')}</p>
+{:else if $bikes}
+  <p>{$t('stationNotFound')}</p>
+{:else}
+  <p class="muted" aria-busy="true">{$t('loading')}</p>
+{/if}
+
+<style>
+  .big-num { font-size: 1.1rem; }
+  .warn { color: var(--warn); }
+</style>

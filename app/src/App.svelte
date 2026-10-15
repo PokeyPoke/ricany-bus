@@ -3,6 +3,8 @@
   import { pragueNow } from '@rb/shared';
   import Home from './sheets/Home.svelte';
   import Planner from './sheets/Planner.svelte';
+  import StopBoard from './sheets/StopBoard.svelte';
+  import BikeStation from './sheets/BikeStation.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
   import { route, navigate } from './lib/nav';
@@ -43,11 +45,11 @@
         {#if $route.name === 'plan'}
           <Planner {data} />
         {:else if $route.name === 'stop'}
-          <!-- SHEET:stop -->
+          <StopBoard {data} stopId={$route.stopId} />
         {:else if $route.name === 'line'}
           <!-- SHEET:line -->
         {:else if $route.name === 'bike'}
-          <!-- SHEET:bike -->
+          <BikeStation {data} uid={$route.uid} />
         {:else}
           <Home {data} />
         {/if}
