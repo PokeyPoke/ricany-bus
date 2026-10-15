@@ -82,4 +82,20 @@ describe('footpath relaxation', () => {
       expect(t + j.egress.sec).toBe(j.arrive);
     }
   });
+  it('keeps a later ride arrival at a stop already reached by footpath (footpaths are not closed)', () => {
+    // O(0) -P0-> S(1) @100; S<->M(2) 50 s gives M a foot label @150, but M->D(3) cannot chain.
+    // P1 S->M arrives @400 (round 2); the footpath M->D (50 s) must still be relaxed: arrive 450.
+    const mk = (i: number, transfers: [number, number][]) => ({ id: 'T' + i, name: 'T' + i, platform: '', lat: 0, lon: 0, lines: [], transfers });
+    const stopsX = [mk(0, []), mk(1, [[2, 50]]), mk(2, [[1, 50], [3, 50]]), mk(3, [[2, 50]])] as unknown as Network['stops'];
+    const pat = (a: number, b: number, dep: number, arr: number) => ({
+      routeId: 'L1731' as const, directionId: 0, headsign: 'h', stops: [a, b], seq: [1, 2],
+      trips: [{ id: `t${a}${b}`, serviceDate: '20261019', arr: [dep, arr], dep: [dep, arr] }],
+    });
+    const patterns = [pat(0, 1, 0, 100), pat(1, 2, 200, 400)];
+    const stopPatterns = stopsX.map(() => [] as { p: number; pos: number }[]);
+    patterns.forEach((p, pi) => p.stops.forEach((s, pos) => stopPatterns[s].push({ p: pi, pos })));
+    const net2: Network = { date: '20261019', stops: stopsX, patterns, stopPatterns };
+    const js = raptor(net2, [{ stop: 0, sec: 0 }], [{ stop: 3, sec: 0 }], 0);
+    expect(Math.min(...js.map((j) => j.arrive))).toBe(450);
+  });
 });

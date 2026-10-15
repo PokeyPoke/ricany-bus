@@ -31,6 +31,9 @@ export function raptor(net: Network, access: StopAccess[], egress: StopAccess[],
   const prev: (Prev | undefined)[][] = [];
   const byRide: Uint8Array[] = [];
   const best = new Float64Array(n).fill(Infinity);
+  // Best ride arrival per stop. Rides are pruned against this, not `best`: a footpath label cannot be
+  // relaxed further (no chaining), so it must not shadow a later ride arrival that can.
+  const bestRide = new Float64Array(n).fill(Infinity);
   const newRound = () => { tau.push(new Float64Array(n).fill(Infinity)); prev.push(new Array(n)); byRide.push(new Uint8Array(n)); };
 
   newRound();
@@ -61,8 +64,8 @@ export function raptor(net: Network, access: StopAccess[], egress: StopAccess[],
         const s = pat.stops[pos];
         if (trip >= 0) {
           const a = pat.trips[trip].arr[pos];
-          if (a < best[s] && a < bestDest) {
-            tau[k][s] = a; best[s] = a; byRide[k][s] = 1;
+          if (a < bestRide[s] && a < bestDest) {
+            tau[k][s] = a; bestRide[s] = a; best[s] = Math.min(best[s], a); byRide[k][s] = 1;
             prev[k][s] = { kind: 'ride', p: pi, trip, boardPos, alightPos: pos, boardStop };
             rideMarked.push(s); marked.add(s);
           }
