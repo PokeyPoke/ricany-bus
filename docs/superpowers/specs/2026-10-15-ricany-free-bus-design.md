@@ -109,7 +109,13 @@ mode **Odjezd teď / Odjezd v / Příjezd do** (depart now / depart at / arrive 
 - **RAPTOR**, max 3 rides (2 transfers).
 - Pareto set over (arrival time, number of rides); departure-time tie-break: later departure
   preferred (less waiting).
-- Arrive-by: reverse RAPTOR.
+- Arrive-by: repeated forward RAPTOR over candidate departure times (latest first) within
+  3 h before the target, keeping journeys that arrive by the target. Same results as reverse
+  RAPTOR, far less code, trivially fast at ~300 trips/day.
+- All PID free-line stop_times have pickup/drop-off type 3 ("na znamení", request stop);
+  only type 1 would forbid boarding/alighting and none exist, so types are ignored.
+- If a depart-at search finds no free trip (evening, Sundays — the lines don't run on
+  Sundays), search the next 2 service days from 00:00.
 - Service days: trips are active per resolved calendar for the date; searches near midnight
   also scan the previous service day for trips with stop times ≥ 24:00.
 
