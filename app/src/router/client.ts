@@ -4,9 +4,19 @@ let worker: Worker | null = null;
 let nextId = 0;
 const pending = new Map<number, { resolve: (r: PlanResult) => void; reject: (e: Error) => void }>();
 
+function failAll(msg: string) {
+  worker?.terminate?.();
+  worker = null;
+  const all = [...pending.values()];
+  pending.clear();
+  for (const p of all) p.reject(new Error(msg));
+}
+
 function getWorker(): Worker {
   if (!worker) {
     worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    worker.onerror = (e) => failAll(`router worker failed: ${(e as ErrorEvent)?.message ?? 'unknown error'}`);
+    worker.onmessageerror = () => failAll('router worker message error');
     worker.onmessage = (e: MessageEvent<{ id: number; result?: PlanResult; error?: string }>) => {
       const p = pending.get(e.data.id);
       if (!p) return;
