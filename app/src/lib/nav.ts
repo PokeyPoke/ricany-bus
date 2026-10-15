@@ -1,0 +1,17 @@
+import { writable } from 'svelte/store';
+import { formatRoute, parseHash, type Route } from './hashRoute';
+
+const store = writable<Route>(parseHash(location.hash));
+addEventListener('hashchange', () => store.set(parseHash(location.hash)));
+
+export const route = { subscribe: store.subscribe };
+
+export function navigate(r: Route, replace = false): void {
+  const h = formatRoute(r);
+  if (replace) {
+    history.replaceState(history.state, '', h);
+    store.set(parseHash(h));
+  } else if (location.hash !== h) {
+    location.hash = h;
+  }
+}

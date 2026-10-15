@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "types": ["node"], "allowImportingTsExtensions": false },
-  "include": ["src/**/*.ts", "test/**/*.ts"]
+  "compilerOptions": { "types": ["node", "vite/client"], "verbatimModuleSyntax": true },
+  "include": ["src/**/*.ts", "src/**/*.svelte", "test/**/*.ts", "e2e/**/*.ts", "*.ts"]
 }
