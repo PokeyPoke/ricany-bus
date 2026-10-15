@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { pragueNow } from '@rb/shared';
+  import Home from './sheets/Home.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
   import { route, navigate } from './lib/nav';
@@ -47,7 +48,7 @@
         {:else if $route.name === 'bike'}
           <!-- SHEET:bike -->
         {:else}
-          <!-- SHEET:home -->
+          <Home {data} />
         {/if}
       </BottomSheet>
     {:else if failed}
