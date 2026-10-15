@@ -18,6 +18,11 @@ Mobile web app that plans trips in Říčany using **only** the free MHD Říča
 - `npm run data` — regenerate timetable data from the live PID feed
 - `npm run dev -w app` — local dev server
 - `npx playwright install chromium` (once), then `npm run e2e -w app` — Playwright e2e on a Pixel 7 viewport with mocked external APIs
-- `cd worker && npx --yes wrangler@4 deploy` — deploy the Worker
+- `cd worker && npx --yes wrangler@4 deploy` — deploy the Worker. The Worker is deployed **manually** from the owner's Mac (the spec called for a GitHub Action; Stage A does not have one). Re-run after any change under `worker/`.
+
+## Known limitations
+- Offline use is configured (PWA service worker) but not exercised by the e2e tests.
+- The Worker decodes the full PID GTFS-RT feed every 15 s; on the Cloudflare free plan this may hit the CPU limit. The app falls back gracefully ("bez živých dat") when the Worker fails.
+- Walking and cycling times are straight-line (haversine × 1.3) estimates, not routed along streets.
 
 Data: © ROPID / PID open data, © OpenStreetMap contributors, Nextbike.
