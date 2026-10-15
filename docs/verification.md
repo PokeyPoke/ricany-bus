@@ -3,7 +3,7 @@
 ## Automated
 - Unit tests: 93 passed (`npm test`: shared 11, pipeline 17, worker 8, app 57); `npm run typecheck` 0 errors
 - Golden RAPTOR vs brute force on real data: passed (part of the app unit tests)
-- E2E (Pixel 7 viewport, mocked externals): 9 passed locally and in CI
+- E2E (Pixel 7 viewport, mocked externals): 10 passed locally and in CI (9 original + a line 1 regression test)
 - CI: https://github.com/PokeyPoke/ricany-bus/actions/runs/38800275212 (test + e2e green)  ·  Deploy: https://github.com/PokeyPoke/ricany-bus/actions/runs/38800274984
 
 ## Live site
@@ -24,12 +24,12 @@
 - Official (25): 05:32 06:02 06:32 07:02 07:32 08:02 08:32 09:02 10:02 11:02 12:02 12:32 13:02 13:32 14:02 14:32 15:02 15:32 16:02 16:32 17:02 18:02 19:02 20:02 21:02
 - App (25): identical list (weekday 2026-10-15)
 - First 5 and last 2 compared: 05:32 06:02 06:32 07:02 07:32 ... 20:02 21:02 — match. Whole list matches.
-- Result: match. Note the PDF footer says 28.10.2026 runs as Saturday; not separately checked.
+- Result: match. The PDF footer says 28.10.2026 runs as Saturday (a holiday); the controller verified in `timetable.json` that the data gives that date Saturday service.
 
 ## Definition of done (spec §8)
-1. ≤ 3 taps from my location to free-only results: e2e "≤ 3 taps" test passes.
-2. Departure board for every stop; map view + timetable for every line: e2e stop board and line view tests; live screenshots.
-3. Nextbike live counts; bike trips in a separate paid section: live plan screenshot shows the paid section; map shows counts.
-4. Czech + English; saved places persist; installable PWA; offline timetables: e2e language and saved-place tests; manifest + sw.js (`rb-data`) present. Offline not exercised.
+1. ≤ 3 taps from my location to free-only results: e2e "≤ 3 taps" test (geolocated start asserted in the URL, results shown) and the free-only badge assertions pass.
+2. Departure board for every stop; map view + timetable for every line: sampled only. Stop board checked for the busiest stop (nádraží) in e2e and live; line views checked for lines 1 and 3 (e2e + live). Not every stop or line was opened individually; the views are generic over the data.
+3. Nextbike live counts; bike trips in a separate paid section: live plan screenshot shows the separate paid section; map shows counts; e2e checks the nearest-bike row and the station page (mocked data).
+4. Czech + English; saved places persist; installable PWA; offline timetables: e2e covers language persistence and saved places. PWA is evidenced only by the manifest (200) and a service worker (`sw.js` containing `rb-data`) being present; installability and offline behaviour were not exercised.
 5. Nightly refresh with zero manual steps; bad feed never breaks the site: refresh-data.yml run https://github.com/PokeyPoke/ricany-bus/actions/runs/38760118781 (success); validation gate tests.
-6. Golden trips match official timetable: line 3 cross-check above matches.
+6. Golden trips match official timetable: the golden RAPTOR-vs-brute-force test on real data (unit tests) plus the line 3 / Jažlovice weekday PDF cross-check above (25/25 departures match).

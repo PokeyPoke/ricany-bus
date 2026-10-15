@@ -26,6 +26,14 @@ test('plans a free-only trip and opens its timeline', async ({ page }) => {
   const card = page.locator('.card').first();
   await expect(card).toBeVisible({ timeout: 15_000 });
   await expect(card.locator('.tag-free')).toBeVisible();
+  // Free section (the first list, right after the "Zdarma" heading) holds only free cards with free-line badges.
+  const freeCards = page.locator('ul.list').first().locator('.card');
+  const n = await freeCards.count();
+  expect(n).toBeGreaterThan(0);
+  for (let i = 0; i < n; i++) await expect(freeCards.nth(i).locator('.tag-free')).toBeVisible();
+  const badges = await freeCards.locator('.badge').allInnerTexts();
+  expect(badges.length).toBeGreaterThan(0);
+  for (const t of badges) expect(['1', '2', '3', '7', '9', '91', '92']).toContain(t.trim());
   await card.click();
   await expect(page.getByRole('button', { name: 'Zpět' })).toBeVisible();
   await expect(page.locator('.leg.bus').first()).toBeVisible();
@@ -39,6 +47,8 @@ test.describe('with location', () => {
     await page.getByLabel('Kam', { exact: true }).fill(b.name.slice(0, 6));  // typing
     await page.getByRole('button', { name: new RegExp(b.name.slice(0, 6)) }).first().click(); // tap 2
     await expect(page).toHaveURL(/from=.*to=/);
+    const from = new URL(page.url().replace('#/', '')).searchParams.get('from')!;
+    expect(Number(from.split(',')[0])).toBeCloseTo(a.lat, 4);
     await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
   });
 });
@@ -47,6 +57,11 @@ test('stop board lists departures and the nearest bike', async ({ page }) => {
   await page.goto(`./#/stop/${busiest.id}`);
   await expect(page.getByRole('heading', { name: new RegExp(busiest.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
   await expect(page.locator('.dep').first()).toBeVisible();
+  const bike = page.locator('button.bike');
+  await expect(bike).toContainText('Test stanice');
+  await bike.click();
+  await expect(page).toHaveURL(/#\/bike\/111/);
+  await expect(page.getByText('Kola: 4')).toBeVisible();
 });
 
 test.describe('live data down', () => {
@@ -80,4 +95,10 @@ test('saved place persists', async ({ page }) => {
 test('explains when no stop is near the start', async ({ page }) => {
   await page.goto(`./#/plan?mode=now&from=49.9,14.65,Daleko&to=${place(b)}`);
   await expect(page.getByText(/Do 1,2 km od výchozího místa/)).toBeVisible({ timeout: 15_000 });
+});
+
+test('line 1 weekday timetable opens on a stop with service (regression)', async ({ page }) => {
+  await page.goto('./#/line/1');
+  await expect(page.locator('.tt-row').first()).toBeVisible();
+  await expect(page.getByText('V tento den linka nejede')).toHaveCount(0);
 });
