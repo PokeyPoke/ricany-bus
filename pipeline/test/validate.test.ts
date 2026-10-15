@@ -28,4 +28,19 @@ describe('validate', () => {
     bad.timetable.patterns[0].trips[0].arr[2] = 0;
     expect(validate(bad, '20261015', ok).some((e) => e.startsWith('non-monotonic times in trip'))).toBe(true);
   });
+  it('fails when the calendar yields no service days (empty/broken calendar)', () => {
+    const bad = structuredClone(data);
+    bad.timetable.servicesByDate = {};
+    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('only 0 of the next 7 days have service'))).toBe(true);
+  });
+  it('ignores active service ids that have no trips in the patterns', () => {
+    const bad = structuredClone(data);
+    for (const d of Object.keys(bad.timetable.servicesByDate)) bad.timetable.servicesByDate[d] = ['GHOST'];
+    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('only 0 of the next 7 days have service'))).toBe(true);
+  });
+  it('fails on non-finite times', () => {
+    const bad = structuredClone(data);
+    bad.timetable.patterns[0].trips[0].dep[1] = NaN;
+    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('non-finite times in trip'))).toBe(true);
+  });
 });
