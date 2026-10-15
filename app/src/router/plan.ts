@@ -1,6 +1,7 @@
 import { MAX_ACCESS_WALK_M, addDays, daysBetween, haversine, walkSec, type StopRec } from '@rb/shared';
 import type { Network } from './network';
 import { raptor, type Journey, type RideStep } from './raptor';
+import { bikeAccessOptions, bikeEgressOptions, bikeOnly } from './bike';
 import type { BikeStation, Itinerary, Leg, PlaceRef, PlanRequest, PlanResult, StopAccess } from './types';
 
 export interface PlanContext { stops: StopRec[]; netFor(date: string): Network }
@@ -62,7 +63,7 @@ export function toItinerary(net: Network, j: Journey): Itinerary {
 }
 
 const signature = (it: Itinerary) =>
-  it.legs.map((l) => (l.kind === 'bus' ? `${l.tripId}:${l.boardPos}-${l.alightPos}` : l.kind === 'bike' ? `bike${l.from.uid}-${l.to.uid}` : '')).join('|');
+  it.legs.map((l) => (l.kind === 'bus' ? `${l.tripId}@${l.serviceDate}:${l.boardPos}-${l.alightPos}` : l.kind === 'bike' ? `bike${l.from.uid}-${l.to.uid}` : '')).join('|');
 
 function dedupe(list: Itinerary[]): Itinerary[] {
   const seen = new Set<string>();
@@ -137,7 +138,21 @@ export function planTrip(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[
   return { free, bike, walk, nearOrigin: accW.length, nearDest: egrW.length };
 }
 
-// Replaced in Task 7.
-function planBike(_ctx: PlanContext, _req: PlanRequest, _bikes: BikeStation[] | null, _free: Itinerary[], _accW: StopAccess[], _egrW: StopAccess[]): Itinerary[] {
-  return [];
+const BIKE_GAIN = 5 * 60;
+
+function planBike(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[] | null, free: Itinerary[], accW: StopAccess[], egrW: StopAccess[]): Itinerary[] {
+  if (!bikes?.length) return [];
+  const accB = bikeAccessOptions(ctx.stops, req.from, bikes);
+  const egrB = bikeEgressOptions(ctx.stops, req.to, bikes);
+  const mixed = [...search(ctx, req, accB, egrW, false), ...search(ctx, req, accW, egrB, false)].filter((it) => !it.free);
+  const better = req.mode === 'dep'
+    ? (it: Itinerary) => !free.length || absTime(req.date, it, 'arrive') <= Math.min(...free.map((f) => absTime(req.date, f, 'arrive'))) - BIKE_GAIN
+    : (it: Itinerary) => !free.length || absTime(req.date, it, 'depart') >= Math.max(...free.map((f) => absTime(req.date, f, 'depart'))) + BIKE_GAIN;
+  const out = dedupe(mixed.filter(better)).sort((a, b) => a.arrive - b.arrive).slice(0, 2);
+  const only = bikeOnly(req.from, req.to, bikes);
+  if (only) {
+    const start = req.mode === 'dep' ? req.sec : req.sec - only.sec;
+    out.push({ date: req.date, depart: start, arrive: start + only.sec, rides: 0, free: false, legs: only.legs(start) });
+  }
+  return out;
 }
