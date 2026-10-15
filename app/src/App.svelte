@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { pragueNow } from '@rb/shared';
   import BottomSheet from './components/BottomSheet.svelte';
+  import MapView from './map/MapView.svelte';
   import { route, navigate } from './lib/nav';
   import { t, lang } from './lib/i18n';
   import { loadData, daysLeft, type AppData } from './lib/data';
@@ -35,7 +36,7 @@
   {#if !online}<div class="banner" role="status">{$t('offline')}</div>{/if}
   <main class="stage">
     {#if data}
-      <!-- MAP -->
+      <MapView {data} />
       <BottomSheet>
         {#if $route.name === 'plan'}
           <!-- SHEET:plan -->
