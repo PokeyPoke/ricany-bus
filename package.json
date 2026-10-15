@@ -1,0 +1,12 @@
+{
+  "name": "ricany-bus",
+  "private": true,
+  "type": "module",
+  "workspaces": ["shared", "pipeline", "worker", "app"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "data": "npm run data -w pipeline"
+  },
+  "engines": { "node": ">=20" }
+}
