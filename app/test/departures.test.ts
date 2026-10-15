@@ -28,6 +28,11 @@ describe('timetable', () => {
     expect(sampleDate(timetable, 'sunday', '20261001')).toBe('20261018');
     expect(sampleDate(timetable, 'saturday', '20261001')).toBeNull();
   });
+  it('sampleDate skips dates with no services (e.g. a weekday holiday)', () => {
+    const tt = { ...timetable, servicesByDate: { '20261026': [], '20261027': ['W'] } };
+    expect(sampleDate(tt, 'weekday', '20261026')).toBe('20261027');
+    expect(sampleDate({ ...timetable, servicesByDate: { '20261026': [] } }, 'weekday', '20261026')).toBeNull();
+  });
   it('dayTypeOf', () => {
     expect(dayTypeOf('20261019')).toBe('weekday');
     expect(dayTypeOf('20261017')).toBe('saturday');

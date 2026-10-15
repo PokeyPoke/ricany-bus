@@ -8,7 +8,7 @@ export const dayTypeOf = (date: string): DayType => {
 };
 
 export function sampleDate(tt: TimetableFile, dayType: DayType, from: string): string | null {
-  return Object.keys(tt.servicesByDate).sort().find((d) => d >= from && dayTypeOf(d) === dayType) ?? null;
+  return Object.keys(tt.servicesByDate).sort().find((d) => d >= from && dayTypeOf(d) === dayType && tt.servicesByDate[d].length > 0) ?? null;
 }
 
 export function stopTimetable(tt: TimetableFile, routeId: FreeRouteId, directionId: number, stop: number, date: string): Map<number, number[]> {
