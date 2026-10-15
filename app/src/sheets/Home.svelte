@@ -13,6 +13,7 @@
   let editing = $state(false);
   const lines = $derived(LINE_ORDER.map((id) => data.lines.find((l) => l.routeId === id)).filter((l): l is LineRec => !!l));
 
+  $effect(() => { if (!$savedPlaces.length) editing = false; });
   $effect(() => { tripOverlay.set(null); highlightLine.set(null); planMarkers.set({}); });
 </script>
 
