@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, untrack } from 'svelte';
   import { get } from 'svelte/store';
   import { hmToSec, secToHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { route, navigate } from '../lib/nav';
   import type { Route } from '../lib/hashRoute';
   import { t } from '../lib/i18n';
-  import { bikes, useBikes, useDelays } from '../lib/live';
+  import { bikes, bikesOk, useBikes, useDelays } from '../lib/live';
   import { getLocation } from '../lib/geoloc';
   import { addRecent } from '../lib/places';
   import { planMarkers, focusPoints, highlightLine, tripOverlay, now } from '../lib/ui';
@@ -24,6 +24,8 @@
   let busy = $state(false);
   let failed = $state(false);
   let locMsg = $state('');
+  let retryTick = $state(0);
+  let lastRecent = '';
 
   $effect(() => useBikes());
   $effect(() => useDelays());
@@ -47,21 +49,31 @@
   const req = $derived.by((): PlanRequest | null => {
     if (!r.from || !r.to) return null;
     const n = r.mode === 'now' ? $now : null;
-    if (n) return { from: r.from, to: r.to, mode: 'dep', date: n.date, sec: n.sec };
+    if (n) return { from: r.from, to: r.to, mode: 'dep', date: n.date, sec: Math.floor(n.sec / 60) * 60 };
     const today = get(now);
     return { from: r.from, to: r.to, mode: r.mode === 'arr' ? 'arr' : 'dep', date: r.date ?? today.date, sec: hmToSec(r.time ?? secToHM(today.sec)) };
   });
 
+  const reqKey = $derived(req ? JSON.stringify(req) : null);
+
   $effect(() => {
-    const q = req;
-    if (!q) { result = null; return; }
+    const key = reqKey;
+    void retryTick;
+    if (!key) { result = null; busy = false; failed = false; return; }
+    // Keep the open result stable while a trip is shown.
+    if (untrack(() => r.sel && result)) return;
+    const q = untrack(() => req)!;
     const b = $bikes;
     let cancelled = false;
     busy = true;
     failed = false;
     planInWorker(q, b)
-      .then((res) => { if (cancelled) return; result = res; busy = false; addRecent(q.to); })
-      .catch(() => { if (cancelled) return; failed = true; busy = false; });
+      .then((res) => {
+        if (cancelled) return;
+        result = res; busy = false;
+        if (lastRecent !== key) { lastRecent = key; addRecent(q.to); }
+      })
+      .catch(() => { if (cancelled) return; result = null; failed = true; busy = false; });
     return () => { cancelled = true; };
   });
 
@@ -126,7 +138,10 @@
   {/if}
 
   {#if busy && !result}<p class="muted" aria-busy="true">{$t('planning')}</p>{/if}
-  {#if failed}<p class="error">{$t('loadFailed')}</p>{/if}
+  {#if failed}
+    <p class="error">{$t('loadFailed')}</p>
+    <button class="secondary" onclick={() => retryTick++}>{$t('retry')}</button>
+  {/if}
 
   {#if result && r.from && r.to}
     {#if result.nearOrigin === 0}<p class="warn" role="status">{$t('noStopsOrigin')}</p>{/if}
@@ -156,6 +171,7 @@
       <h2>🚶 {$t('walkOnly')}</h2>
       <ul class="list"><li><ItineraryCard it={result.walk} stops={data.stops} today={$now.date} onclick={() => open('w')} /></li></ul>
     {/if}
+    {#if !$bikesOk}<p class="muted small" role="status">{$t('bikeUnavailable')}</p>{/if}
   {/if}
 {/if}
 

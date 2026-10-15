@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import type { Itinerary } from '../router/types';
@@ -15,11 +16,16 @@
   const mins = (a: number, b: number) => Math.max(1, Math.round((b - a) / 60));
   const stopLabel = (i: number) => `${data.stops[i].name}${data.stops[i].platform ? ` (${data.stops[i].platform})` : ''}`;
 
+  const sig = $derived(it.legs.map((l) => (l.kind === 'bus' ? `${l.tripId}@${l.depart}` : `${l.kind}@${l.depart}`)).join('|'));
+
   $effect(() => {
+    void sig;
+    untrack(() => {
     tripOverlay.set(it);
     focusPoints.set(it.legs.flatMap((l): [number, number][] => l.kind === 'bus'
       ? [[data.stops[l.from].lon, data.stops[l.from].lat], [data.stops[l.to].lon, data.stops[l.to].lat]]
       : [[l.from.lon, l.from.lat], [l.to.lon, l.to.lat]]));
+    });
     return () => tripOverlay.set(null);
   });
 </script>
@@ -28,12 +34,13 @@
   <button class="back" aria-label={$t('back')} onclick={onBack}>←</button>
   <h1>{formatHM(it.depart)} – {formatHM(it.arrive)}</h1>
   {#if it.free}<span class="tag-free">{$t('free')}</span>{:else}<span class="tag-paid">{$t('paid')}</span>{/if}
+  {#if !$delaysOk}<DelayBadge sec={null} live={false} />{/if}
 </div>
 
 <ol class="legs">
   {#each it.legs as l, i (i)}
     <li class="leg {l.kind}">
-      <div class="time">{formatHM(l.depart)}{#if l.kind === 'bus'}<DelayBadge sec={ov.boardDelay[i]} live={$delaysOk} />{/if}</div>
+      <div class="time">{formatHM(l.depart)}{#if l.kind === 'bus'}<DelayBadge sec={ov.boardDelay[i]} live={true} />{/if}</div>
       <div class="body">
         {#if l.kind === 'walk'}
           <div>🚶 {$t('walkFor', { n: mins(l.depart, l.arrive), m: l.meters })}</div>
@@ -43,12 +50,12 @@
           <div class="small muted">{l.from.name} → {l.to.name}</div>
           <div class="small muted">{$t('bikesNow', { n: l.from.bikes })}</div>
         {:else}
-          {#if ov.transferRisk[i]}<p class="risk" role="alert">⚠️ {$t('transferRisk')}</p>{/if}
+          {#if ov.transferRisk[i]}<p class="risk" role="status">⚠️ {$t('transferRisk')}</p>{/if}
           <div class="line"><LineBadge routeId={l.routeId} /> <span>{$t('toward', { h: l.headsign })}</span></div>
           <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.from].id })}>{stopLabel(l.from)}</button>
           <div class="small muted">{$t('stopsCount', { n: l.stopCount })}</div>
           <div class="arr">
-            {formatHM(l.arrive)}<DelayBadge sec={ov.alightDelay[i]} live={$delaysOk} />
+            {formatHM(l.arrive)}<DelayBadge sec={ov.alightDelay[i]} live={true} />
             <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.to].id })}>{stopLabel(l.to)}</button>
           </div>
         {/if}

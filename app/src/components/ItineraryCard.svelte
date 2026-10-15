@@ -1,7 +1,7 @@
 <script lang="ts">
   import { addDays, formatHM, type StopRec } from '@rb/shared';
   import type { Itinerary } from '../router/types';
-  import { tripDelay } from '../router/delays';
+  import { tripDelay, overlayDelays } from '../router/delays';
   import { delays, delaysOk } from '../lib/live';
   import { t } from '../lib/i18n';
   import LineBadge from './LineBadge.svelte';
@@ -9,6 +9,7 @@
 
   let { it, stops, today, onclick }: { it: Itinerary; stops: StopRec[]; today: string; onclick: () => void } = $props();
   const firstBus = $derived(it.legs.find((l) => l.kind === 'bus'));
+  const risk = $derived(overlayDelays(it, $delays).transferRisk.some(Boolean));
   const mins = (a: number, b: number) => Math.max(1, Math.round((b - a) / 60));
   const dayLabel = $derived(it.date === today ? '' : it.date === addDays(today, 1) ? $t('tomorrow') : `${+it.date.slice(6, 8)}. ${+it.date.slice(4, 6)}.`);
 </script>
@@ -21,6 +22,7 @@
     <span class="spacer"></span>
     {#if it.free}<span class="tag-free">{$t('free')}</span>{:else}<span class="tag-paid">{$t('paid')}</span>{/if}
   </div>
+  {#if risk}<div class="risk small">⚠️ {$t('transferRisk')}</div>{/if}
   <div class="chain">
     {#each it.legs as l, i (i)}
       {#if i}<span class="sep" aria-hidden="true">›</span>{/if}
@@ -44,6 +46,7 @@
   .day { background: var(--chip); border-radius: 6px; padding: 0 6px; font-size: 0.8rem; font-weight: 600; }
   .spacer { flex: 1; }
   .chain { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .risk { color: var(--bad); font-weight: 700; }
   .sep { color: var(--muted); }
   .walk, .bike { font-size: 0.9rem; }
 </style>
