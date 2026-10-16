@@ -2,10 +2,12 @@ const NEEDLE = new TextEncoder().encode('L173');
 
 function contains(buf: Uint8Array, start: number, end: number, needle: Uint8Array): boolean {
   const n0 = needle[0], last = end - needle.length;
-  outer: for (let i = start; i <= last; i++) {
-    if (buf[i] !== n0) continue;
-    for (let k = 1; k < needle.length; k++) if (buf[i + k] !== needle[k]) continue outer;
-    return true;
+  let i = buf.indexOf(n0, start);
+  while (i !== -1 && i <= last) {
+    let k = 1;
+    while (k < needle.length && buf[i + k] === needle[k]) k++;
+    if (k === needle.length) return true;
+    i = buf.indexOf(n0, i + 1);
   }
   return false;
 }

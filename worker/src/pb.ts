@@ -3,6 +3,7 @@
 // FeedEntity{trip_update=3}, TripUpdate{trip=1, stop_time_update=2, delay=5},
 // TripDescriptor{trip_id=1, start_date=3, route_id=5}, StopTimeUpdate{stop_sequence=1, arrival=2, departure=3, stop_id=4},
 // StopTimeEvent{delay=1}.
+const DEC = new TextDecoder();
 class Reader {
   constructor(private buf: Uint8Array, public pos = 0, private end = buf.length) {}
   private varint(): { lo: number; hi: number } {
@@ -24,7 +25,7 @@ class Reader {
     if (this.pos > this.end) throw new Error('truncated');
     return [s, this.pos];
   }
-  string(): string { const [s, e] = this.span(); return new TextDecoder().decode(this.buf.subarray(s, e)); }
+  string(): string { const [s, e] = this.span(); return DEC.decode(this.buf.subarray(s, e)); }
   sub(): Reader { const [s, e] = this.span(); return new Reader(this.buf, s, e); }
   skip(wt: number): void {
     if (wt === 0) this.varint();

@@ -63,4 +63,21 @@ describe('handler', () => {
     const h = createHandler({ fetchUpstream: (_u, signal) => new Promise((_, rej) => signal.addEventListener('abort', () => rej(new Error('aborted')))), now: () => 0, timeoutMs: 20 });
     expect((await h(req('/delays'))).status).toBe(503);
   });
+  it('coalesces concurrent refreshes', async () => {
+    const fetchUpstream = vi.fn(async () => { await new Promise((r) => setTimeout(r, 10)); return new Response(pb); });
+    const h = createHandler({ fetchUpstream, now: () => 0 });
+    await Promise.all([h(req('/delays')), h(req('/delays')), h(req('/delays'))]);
+    expect(fetchUpstream).toHaveBeenCalledTimes(1);
+  });
+  it('backs off 10 s after an upstream failure', async () => {
+    let t = 0;
+    const fetchUpstream = vi.fn(async () => new Response('x', { status: 502 }));
+    const h = createHandler({ fetchUpstream, now: () => t });
+    expect((await h(req('/delays'))).status).toBe(503);
+    t = 5_000;
+    expect((await h(req('/delays'))).status).toBe(503);
+    expect(fetchUpstream).toHaveBeenCalledTimes(1);
+    t = 11_000; await h(req('/delays'));
+    expect(fetchUpstream).toHaveBeenCalledTimes(2);
+  });
 });

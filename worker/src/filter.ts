@@ -19,14 +19,16 @@ export function filterDelays(feed: { timestamp: number; updates: TripUpdate[] })
   return { generatedAt: feed.timestamp, trips };
 }
 
+const round1 = (x: number | null) => (x == null || !Number.isFinite(x) ? null : Math.round(x * 10) / 10);
+
 export function filterPositions(feed: { timestamp: number; vehicles: RawVehicle[] }): PositionsResponse {
   const vehicles: Vehicle[] = [];
   for (const v of feed.vehicles) {
     const t = v.trip;
-    if (!t?.tripId || !t.routeId || !FREE.has(t.routeId) || v.lat == null || v.lon == null) continue;
+    if (!t?.tripId || !t.routeId || !FREE.has(t.routeId) || !Number.isFinite(v.lat) || !Number.isFinite(v.lon)) continue;
     vehicles.push({
       id: v.id ?? t.tripId, label: v.label ?? '', tripId: t.tripId, routeId: t.routeId as FreeRouteId, startDate: t.startDate ?? '',
-      lat: +v.lat.toFixed(6), lon: +v.lon.toFixed(6), bearing: v.bearing ?? null, speed: v.speed ?? null,
+      lat: +v.lat!.toFixed(6), lon: +v.lon!.toFixed(6), bearing: round1(v.bearing), speed: round1(v.speed),
       stopSeq: v.stopSeq ?? null, ts: v.ts ?? feed.timestamp,
     });
   }

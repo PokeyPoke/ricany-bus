@@ -52,3 +52,10 @@ describe('filterDelays', () => {
     expect(JSON.stringify(d).length).toBeLessThan(50_000);
   });
 });
+
+describe('decoder bounds', () => {
+  it('throws when a sub-message declares a length beyond its parent', () => {
+    // entity (len 2) containing trip_update field declaring 50 bytes
+    expect(() => decodeTripUpdates(new Uint8Array([0x12, 0x02, 0x1a, 0x32, 0x00, 0x00, 0x00, 0x00]))).toThrow();
+  });
+});
