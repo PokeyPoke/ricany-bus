@@ -591,6 +591,39 @@ export const lineSelection = writable<{ number: string; directionId: number } | 
 
 ---
 
+### Task 6c: Cute bus icons and non-overlapping live buses (owner request 2026-10-16)
+
+Owner: "Some small issues with the live bus icons overlapping. Also can you make them cute busses with correct color and number?"
+
+**Files:** Modify `app/src/map/busIcons.ts`, `app/src/map/geojson.ts` (+test), `app/src/map/layers.ts`, `app/src/map/MapView.svelte`, `app/src/map/basemap.ts`, `app/src/components/LayersPanel.svelte`. Create `app/src/map/spread.ts` + `app/test/spread.test.ts`.
+
+**Cute bus icon** (`drawBusIcon(routeId)`, drawn at 2×, registered with pixelRatio 2, ~40×44 logical px):
+- Front view of a small rounded bus body filled with the line colour (`LINE_STYLE[routeId].color`), darker 1.5 px outline (colour darkened ~25 %), white 2 px outer halo so it reads on any map.
+- Big windscreen (light sky-blue, rounded), two round headlights (warm yellow/white), a small curved bumper "smile", two dark wheels peeking under the body, side mirrors as tiny ears.
+- A white destination sign on top of the windscreen with the line number in bold dark text (`LINE_STYLE[...].text` contrast rule: dark text on white sign always), legible at 1× for "91"/"92".
+- Keep the separate direction arrow, but place it outside the bus: offset along the bearing (rotate the offset with the bearing, e.g. arrow layer uses `icon-rotate` and `icon-offset` [0,-30] with `icon-rotation-alignment: map`, so it orbits the bus in the travel direction), smaller and in the line colour with white stroke.
+- Unit-test what is testable without canvas (e.g. a pure `darken(hex, f)` helper and sign text choice).
+
+**Overlap handling** (`spread.ts`):
+```ts
+export interface ScreenPt { id: string; x: number; y: number }
+/** Returns pixel offsets so markers closer than minPx are fanned out around their centroid on a circle of radius r (≥ minPx/ (2 sin(π/n))), deterministic order by id; isolated markers get [0,0]. */
+export function spreadOffsets(pts: ScreenPt[], minPx = 34): Record<string, [number, number]>
+```
+- Cluster greedily (single-link within minPx). For clusters of n ≥ 2 place members evenly on a circle around the cluster centroid, starting at 12 o'clock, ordered by id; offset = target − own position.
+- MapView: on positions update and on `moveend`/`zoomend`, project fresh vehicles (`map.project`), compute offsets, set `ox`/`oy` feature properties; bus and arrow layers use data-driven `icon-offset` (`['literal'…]` is not data-driven — build it as `['array', ['get','ox'], ['get','oy']]` or store offset as an array property and use `['get','off']`; check maplibre 6 support and record). When a bus is displaced, draw a thin leader line from the true position to the icon (a `buses-leader` line layer using a small LineString source computed in screen→lngLat space via `map.unproject`).
+- Tests: two points 10 px apart → both offset, symmetric, |offset| ≈ r; three points → 120° apart; isolated → [0,0]; deterministic.
+
+**Fold-in fixes (Task 6b review):**
+1. `declutter` wrapped in try/catch (log once) and `gen++` must always run after style.load.
+2. Pulse: don't restart the timer on each positions poll (key the effect on the overlay trip ids only, read positions untracked inside the tick); set `transition: {duration: 0}` on the pulsed paint properties; skip ticks while `document.hidden`.
+3. LayersPanel: close on Escape and on outside tap; don't write defaults to storage until the user toggles; coerce stored values to boolean.
+4. Place popup: close it on any route change.
+
+**Done when:** all tests + typecheck + build + e2e green; Playwright scratch screenshots (not in repo) at z15 and z17 with real network showing the cute buses; and a synthetic check: in a scratch dev page inject `positions` with two buses on the same coordinates → screenshot shows them fanned out with leader lines. Read screenshots and judge cuteness/legibility honestly (numbers readable). Commit + push.
+
+---
+
 ### Task 7: Line view ↔ map, "Kam pojedete?" and direct-ride sheets
 
 **Files:** Modify `app/src/sheets/LineView.svelte`, `app/src/sheets/StopBoard.svelte`, `app/src/lib/hashRoute.ts` (+test), `app/src/App.svelte`, `app/src/lib/i18n.ts`. Create `app/src/sheets/FromSheet.svelte`, `app/src/sheets/RideSheet.svelte`.
