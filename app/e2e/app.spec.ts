@@ -102,3 +102,17 @@ test('line 1 weekday timetable opens on a stop with service (regression)', async
   await expect(page.locator('.tt-row').first()).toBeVisible();
   await expect(page.getByText('V tento den linka nejede')).toHaveCount(0);
 });
+
+test('layers panel: Nextbike off by default, switches toggle and persist', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'Vrstvy mapy' }).click();
+  const bikes = page.getByRole('switch', { name: 'Stanice Nextbike' });
+  await expect(bikes).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByRole('switch', { name: 'Obchody a služby' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByRole('switch', { name: 'Budovy' })).toHaveAttribute('aria-checked', 'true');
+  await bikes.click();
+  await expect(bikes).toHaveAttribute('aria-checked', 'true');
+  await page.reload();
+  await page.getByRole('button', { name: 'Vrstvy mapy' }).click();
+  await expect(page.getByRole('switch', { name: 'Stanice Nextbike' })).toHaveAttribute('aria-checked', 'true');
+});

@@ -12,7 +12,6 @@
   import { route, navigate } from './lib/nav';
   import { t, lang } from './lib/i18n';
   import { loadData, daysLeft, type AppData } from './lib/data';
-  import { bikesLayerOn } from './lib/ui';
 
   let data = $state.raw<AppData | null>(null); // raw: large, immutable, and must be structured-cloneable for the router worker
   let failed = $state(false);
@@ -35,7 +34,6 @@
 <div class="app">
   <header class="topbar">
     <button class="search" onclick={() => navigate({ name: 'plan', mode: 'now' })}>🔍 {$t('whereTo')}</button>
-    <button class="icon" aria-pressed={$bikesLayerOn} aria-label={$t('layerBikes')} onclick={() => bikesLayerOn.update((v) => !v)}>🚲</button>
     <button class="icon" aria-label={$t('langToggle')} onclick={() => lang.update((l) => (l === 'cs' ? 'en' : 'cs'))}>{$lang === 'cs' ? 'EN' : 'CZ'}</button>
   </header>
   {#if stale}<div class="banner" role="status">{$t('staleData')}</div>{/if}
@@ -71,7 +69,6 @@
   .topbar { display: flex; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); background: var(--bg); box-shadow: var(--shadow); z-index: 10; }
   .search { flex: 1; text-align: left; background: var(--chip); border-radius: 12px; padding: 0 14px; color: var(--muted); }
   .icon { width: 44px; border-radius: 12px; background: var(--chip); font-weight: 700; }
-  .icon[aria-pressed='false'] { opacity: 0.5; }
   .stage { position: relative; flex: 1; overflow: hidden; }
   .center { display: grid; place-items: center; align-content: center; gap: 12px; height: 100%; }
 </style>

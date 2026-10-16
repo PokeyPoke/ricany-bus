@@ -1,8 +1,16 @@
 import { readable, writable } from 'svelte/store';
 import { pragueNow, type FreeRouteId } from '@rb/shared';
 import type { Itinerary, PlaceRef } from '../router/types';
+import { load, save } from './storage';
 
-export const bikesLayerOn = writable(true);
+function persisted(key: string, fallback: boolean) {
+  const s = writable<boolean>(load(key, fallback));
+  s.subscribe((v) => save(key, v));
+  return s;
+}
+export const bikesLayerOn = persisted('rb.layer.bikes', false);
+export const poiLayerOn = persisted('rb.layer.poi', true);
+export const buildingsLayerOn = persisted('rb.layer.buildings', true);
 export const pickTarget = writable<'from' | 'to' | 'add' | null>(null);
 export const mapPick = writable<{ lat: number; lon: number } | null>(null);
 export const tripOverlay = writable<Itinerary | null>(null);

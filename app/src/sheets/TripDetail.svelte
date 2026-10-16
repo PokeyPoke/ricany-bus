@@ -20,6 +20,7 @@
     const pat = data.timetable.patterns[l.pattern];
     const pos = pat.seq.findIndex((s) => s >= v.stopSeq!);
     if (pos < 0) return null;
+    if (pos > l.alightPos) return null; // bus is already past this leg
     const away = l.boardPos - pos;
     if (away > 0) return $t('busStopsAway', { n: away });
     return $t('busNow', { stop: data.stops[pat.stops[pos]].name });

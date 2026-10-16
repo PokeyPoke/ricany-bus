@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
-  import { positions, delays, freshVehicles, resolveVehicleTrip, usePositions } from '../lib/live';
+  import { positions, delays, freshVehicles, resolveVehicleTrip, usePositions, positionsOk } from '../lib/live';
   import { netFor } from '../lib/network';
   import { tripDelay } from '../router/delays';
   import { now, focusPoints, tripOverlay, highlightLine } from '../lib/ui';
@@ -21,12 +21,14 @@
   const stopsList = $derived.by(() => {
     if (!v || !res || !pat || !trip) return [];
     const cur = v.stopSeq;
-    const start = cur == null ? 0 : Math.max(0, pat.seq.findIndex((s) => s >= cur));
+    // stopSeq beyond the pattern: the bus is at/after the terminus, show only the last stop
+    const found = cur == null ? 0 : pat.seq.findIndex((s) => s >= cur);
+    const start = found < 0 ? pat.seq.length - 1 : found;
     return pat.stops.slice(start).map((stopIdx, k) => {
       const pos = start + k;
       const seq = pat.seq[pos];
       const d = tripDelay($delays, tripId, v.startDate, seq);
-      return { stopIdx, pos, seq, current: cur != null && seq === cur, eta: trip.arr[pos] + (d ?? 0), delay: d };
+      return { stopIdx, pos, seq, current: cur != null && (seq === cur || found < 0), eta: trip.arr[pos] + (d ?? 0), delay: d };
     });
   });
   const ts = $derived(v ? new Date(v.ts * 1000).toLocaleTimeString($lang === 'cs' ? 'cs-CZ' : 'en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '');
@@ -47,7 +49,7 @@
 </div>
 
 {#if !v}
-  {#if $positions}<p class="warn">{$t('busGone')}</p>{:else}<p class="muted" aria-busy="true">{$t('loading')}</p>{/if}
+  {#if $positions || !$positionsOk}<p class="warn">{$t('busGone')}</p>{:else}<p class="muted" aria-busy="true">{$t('loading')}</p>{/if}
 {:else if !res || !pat}
   <p><strong>{$t('livePosition')}</strong></p>
   <p class="muted small">{ts}</p>

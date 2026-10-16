@@ -8,11 +8,13 @@
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
   import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles } from '../lib/live';
-  import { bikesLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
+  import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
   import { addLayers } from './layers';
+  import { declutter, poiCategory } from './basemap';
+  import LayersPanel from '../components/LayersPanel.svelte';
   import { bikesGeoJson, busesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
 
   // maplibre 6 locates its worker via import.meta.url, which breaks under Vite's dep pre-bundling; point it at the emitted asset.
@@ -70,8 +72,28 @@
     }
     const g = nearest(q('groups-hit', near(22)));
     if (g) { navigate({ name: 'stop', stopId: data.groups[Number(p(g).gi)].id }); return; }
+    const place = nearest(q('places', near(18)).concat(q('places-detail', near(18))));
+    if (place) { showPlace(place); return; }
     const l = q('lines', near(10))[0];
     if (l) navigate({ name: 'line', number: String(p(l).number), dir: Number(p(l).directionId) || 0 });
+  }
+
+  let popup: maplibregl.Popup | null = null;
+  function showPlace(f: maplibregl.MapGeoJSONFeature) {
+    const props = f.properties as { name?: string; class?: string; subclass?: string };
+    const [lon, lat] = (f.geometry as unknown as { coordinates: [number, number] }).coordinates;
+    const category = get(t)(poiCategory(props) as never);
+    const name = props.name || category;
+    const box = document.createElement('div');
+    box.className = 'rb-place';
+    const h = document.createElement('strong'); h.textContent = name;
+    const c = document.createElement('div'); c.className = 'cat'; c.textContent = category;
+    const b = document.createElement('button'); b.className = 'go'; b.textContent = get(t)('goHere');
+    box.append(h, c, b);
+    popup?.remove();
+    const pp = new maplibregl.Popup({ offset: 14, closeButton: true, maxWidth: '240px' }).setLngLat([lon, lat]).setDOMContent(box).addTo(map!);
+    popup = pp;
+    b.onclick = () => { pp.remove(); navigate({ name: 'plan', mode: 'now', to: { lat, lon, name } }); };
   }
 
   async function locate() {
@@ -92,7 +114,7 @@
       m.setStyle(FALLBACK_STYLE);
     };
     // style.load fires for the first style and again after the fallback swap; setStyle drops our sources/layers/images
-    m.on('style.load', () => { styled = true; addLayers(m, data); gen++; });
+    m.on('style.load', () => { styled = true; addLayers(m, data); declutter(m); gen++; });
     m.on('error', fallBack);
     const timer = setTimeout(fallBack, 8000);
     m.on('click', onClick);
@@ -102,10 +124,10 @@
       const cur = (id: string[]) => m.queryRenderedFeatures(e.point, { layers: id.filter((i) => m.getLayer(i)) });
       const h = cur(hit).filter((f) => f.layer.id !== 'line-stops' || m.getLayoutProperty('line-stops', 'visibility') === 'visible')[0];
       if (canHover) hoverGroup.set(h ? Number((h.properties as { gi: number }).gi) : null);
-      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['buses', 'bikes', 'lines']).length ? 'pointer' : '';
+      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['buses', 'bikes', 'places', 'places-detail', 'lines']).length ? 'pointer' : '';
     });
     m.on('mouseout', () => hoverGroup.set(null));
-    return () => { clearTimeout(timer); hoverGroup.set(null); m.remove(); map = null; };
+    return () => { clearTimeout(timer); popup?.remove(); hoverGroup.set(null); m.remove(); map = null; };
   });
 
   let hovered: number | null = null;
@@ -139,6 +161,29 @@
     if (!gen || !map) return;
     setData('bikes', bikesGeoJson($bikes ?? []));
     for (const id of ['bikes', 'bikes-count']) map.setLayoutProperty(id, 'visibility', $bikesLayerOn ? 'visible' : 'none');
+  });
+  $effect(() => {
+    if (!gen || !map) return;
+    const v = $poiLayerOn ? 'visible' : 'none';
+    for (const id of ['places', 'places-detail']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v);
+    if (map.getLayer('building')) map.setLayoutProperty('building', 'visibility', $buildingsLayerOn ? 'visible' : 'none');
+  });
+  // live buses of the open trip pulse; a cheap paint tick (6 fps) that stops with the effect
+  $effect(() => {
+    if (!gen || !map || !map.getLayer('buses-pulse')) return;
+    const m = map;
+    const ids = ($tripOverlay?.legs ?? []).flatMap((l) => (l.kind === 'bus' ? [l.tripId] : []));
+    const live = new Set(freshVehicles($positions, Date.now()).map((v) => v.tripId));
+    const on = ids.filter((id) => live.has(id));
+    m.setFilter('buses-pulse', ['in', ['get', 'tripId'], ['literal', on]] as maplibregl.FilterSpecification);
+    if (!on.length) return;
+    const t0 = performance.now();
+    const i = setInterval(() => {
+      const ph = ((performance.now() - t0) % 1400) / 1400;
+      m.setPaintProperty('buses-pulse', 'circle-radius', 20 + ph * 16);
+      m.setPaintProperty('buses-pulse', 'circle-opacity', 0.55 * (1 - ph));
+    }, 160);
+    return () => clearInterval(i);
   });
   $effect(() => {
     if (!gen || !map) return;
@@ -177,6 +222,7 @@
 <div class="map" bind:this={el}></div>
 {#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>{/if}
 <button class="locate" aria-label={$t('locate')} onclick={locate}>📍</button>
+<LayersPanel />
 
 <style>
   .map { position: absolute; inset: 0; }
@@ -185,5 +231,8 @@
   :global(.rb-marker) { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
   :global(.rb-marker.from) { background: #1d7a35; }
   :global(.rb-marker.to) { background: #c62828; }
+  :global(.rb-place) { display: grid; gap: 2px; min-width: 150px; color: #1d2a3a; }
+  :global(.rb-place .cat) { font-size: 0.8rem; color: #5b6772; }
+  :global(.rb-place .go) { margin-top: 6px; min-height: 40px; border-radius: 8px; background: var(--accent, #1a56c4); color: #fff; font-weight: 700; }
   :global(.rb-marker.me) { width: 18px; height: 18px; background: #1a73e8; }
 </style>

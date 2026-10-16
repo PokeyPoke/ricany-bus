@@ -56,8 +56,9 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
 
   // live buses: above everything
   map.addSource('buses', { type: 'geojson', data: empty as never });
-  for (const r of LINE_ORDER) if (!map.hasImage(`bus-${r}`)) map.addImage(`bus-${r}`, drawBusIcon(r));
-  if (!map.hasImage('bus-arrow')) map.addImage('bus-arrow', drawArrow());
+  for (const r of LINE_ORDER) if (!map.hasImage(`bus-${r}`)) map.addImage(`bus-${r}`, drawBusIcon(r), { pixelRatio: 2 });
+  if (!map.hasImage('bus-arrow')) map.addImage('bus-arrow', drawArrow(), { pixelRatio: 2 });
+  map.addLayer({ id: 'buses-pulse', type: 'circle', source: 'buses', filter: ['in', ['get', 'tripId'], ['literal', []]], paint: { 'circle-radius': 20, 'circle-color': ['get', 'color'], 'circle-opacity': 0.5, 'circle-pitch-alignment': 'map' } });
   map.addLayer({ id: 'buses-arrow', type: 'symbol', source: 'buses', filter: ['>=', ['get', 'bearing'], 0], layout: {
     'icon-image': 'bus-arrow', 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -22], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
   } });
