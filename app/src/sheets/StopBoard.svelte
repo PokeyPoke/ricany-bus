@@ -4,7 +4,7 @@
   import { netFor } from '../lib/network';
   import { departuresAt, boardWindow } from '../router/departures';
   import { tripDelay } from '../router/delays';
-  import { delays, delaysOk, useDelays, bikes, useBikes } from '../lib/live';
+  import { delays, delaysOk, useDelays, bikes, bikesAt, bikesStaleMin, useBikes } from '../lib/live';
   import { now, focusPoints, highlightLine, tripOverlay } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { t, lang } from '../lib/i18n';
@@ -45,6 +45,7 @@
     return today;
   });
 
+  const staleMin = $derived(bikesStaleMin($bikesAt, Date.now() + 0 * $now.sec));
   const nearestBike = $derived.by(() => {
     if (!stop || !$bikes?.length) return null;
     return $bikes.map((b) => ({ b, m: Math.round(haversine(stop.lat, stop.lon, b.lat, b.lon)) })).sort((x, y) => x.m - y.m)[0];
@@ -99,10 +100,12 @@
     <button class="row bike" onclick={() => navigate({ name: 'bike', uid: nearestBike.b.uid })}>
       🚲 {nearestBike.b.name} · {$t('bikesAvailable', { n: nearestBike.b.bikes })} · {nearestBike.m} m
     </button>
+    {#if staleMin != null}<p class="warn small" role="status">{$t('bikesStale', { n: staleMin })}</p>{/if}
   {/if}
 {/if}
 
 <style>
+  .warn { color: var(--warn); }
   .line { min-width: 44px; display: grid; place-items: center; }
   .spacer { flex: 1; }
   .dep { display: grid; grid-template-columns: 52px auto 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; }

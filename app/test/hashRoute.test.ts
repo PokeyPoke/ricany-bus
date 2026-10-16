@@ -15,6 +15,7 @@ describe('hashRoute', () => {
     rt({ name: 'from', groupId: 'U9364Z11', line: '3', dir: 1 });
     rt({ name: 'from', groupId: 'U9364Z11', line: undefined, dir: undefined });
     rt({ name: 'ride', line: '91', dir: 0, from: 'U1Z1', to: 'U2Z2' });
+    rt({ name: 'about' });
   });
   it('falls back to home or defaults on garbage', () => {
     expect(parseHash('')).toEqual({ name: 'home' });
@@ -23,6 +24,12 @@ describe('hashRoute', () => {
     expect(parseHash('#/bike/abc')).toEqual({ name: 'home' });
     expect(parseHash('#/plan?mode=xyz&from=a,b,c')).toMatchObject({ name: 'plan', mode: 'now', from: undefined });
     expect(parseHash('#/line/3')).toEqual({ name: 'line', number: '3', dir: 0, stopId: undefined });
+  });
+  it('coerces line dir to 0|1', () => {
+    expect(parseHash('#/line/3?dir=7')).toMatchObject({ dir: 0 });
+    expect(parseHash('#/line/3?dir=-1')).toMatchObject({ dir: 0 });
+    expect(parseHash('#/line/3?dir=abc')).toMatchObject({ dir: 0 });
+    expect(parseHash('#/line/3?dir=1')).toMatchObject({ dir: 1 });
   });
   it('garbage from/ride fall back', () => {
     expect(parseHash('#/from/')).toEqual({ name: 'home' });

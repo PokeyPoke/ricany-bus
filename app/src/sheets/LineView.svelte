@@ -48,7 +48,10 @@
   let fromList = false; // hover that started on a list row must not scroll the list
   const enter = (e: PointerEvent, g: number) => { if (e.pointerType !== 'mouse') return; fromList = true; hoverGroup.set(g); };
   const leave = (e: PointerEvent) => { if (e.pointerType !== 'mouse') return; fromList = false; hoverGroup.set(null); };
-  $effect(() => () => hoverGroup.set(null));
+  $effect(() => {
+    void selNumber; void selDir; // line or direction changed: drop any stale hover highlight
+    return () => hoverGroup.set(null);
+  });
   // selection (list tap or map marker tap): keep the selected row visible
   $effect(() => {
     if (selIdx < 0 || !listEl) return;

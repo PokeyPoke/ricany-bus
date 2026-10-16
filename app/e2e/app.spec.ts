@@ -45,7 +45,7 @@ test.describe('with location', () => {
     await page.goto('./');
     await page.getByRole('button', { name: /Kam jedete/ }).first().click(); // tap 1
     await page.getByLabel('Kam', { exact: true }).fill(b.name.slice(0, 6));  // typing
-    await page.getByRole('button', { name: new RegExp(b.name.slice(0, 6)) }).first().click(); // tap 2
+    await page.getByRole('option', { name: new RegExp(b.name.slice(0, 6)) }).first().click(); // tap 2
     await expect(page).toHaveURL(/from=.*to=/);
     const from = new URL(page.url().replace('#/', '')).searchParams.get('from')!;
     expect(Number(from.split(',')[0])).toBeCloseTo(a.lat, 4);
@@ -85,7 +85,7 @@ test('saved place persists', async ({ page }) => {
   await page.getByRole('button', { name: /Přidat místo/ }).click();
   await page.getByLabel('Název').fill('Domů');
   await page.getByLabel('Adresa, místo nebo zastávka').fill(b.name.slice(0, 6));
-  await page.getByRole('button', { name: new RegExp(b.name.slice(0, 6)) }).first().click();
+  await page.getByRole('option', { name: new RegExp(b.name.slice(0, 6)) }).first().click();
   await page.getByRole('button', { name: 'Uložit' }).click();
   await expect(page.getByRole('button', { name: /🏠 Domů/ })).toBeVisible();
   await page.reload();
@@ -126,4 +126,25 @@ test('line view -> Kam jedete? -> downstream stop -> direct ride list', async ({
   await page.locator('.ds').first().click();
   await expect(page).toHaveURL(/#\/ride\?/);
   await expect(page.locator('.ride').first()).toBeVisible();
+});
+
+test('about page opens from the top bar, in cs and en', async ({ page }) => {
+  await page.goto('./');
+  await page.getByRole('button', { name: 'O aplikaci' }).click();
+  await expect(page).toHaveURL(/#\/about/);
+  await expect(page.getByText('Neoficiální aplikace')).toBeVisible();
+  await page.getByRole('button', { name: 'English' }).click();
+  await expect(page.getByText('Unofficial app')).toBeVisible();
+});
+
+test('place input is a keyboard-operable combobox', async ({ page }) => {
+  await page.goto('./#/plan?mode=now');
+  const box = page.getByRole('combobox', { name: 'Kam', exact: true });
+  await box.fill(b.name.slice(0, 6));
+  await expect(page.getByRole('option').first()).toBeVisible();
+  await expect(box).toHaveAttribute('aria-expanded', 'true');
+  await box.press('ArrowDown');
+  await expect(page.getByRole('option').first()).toHaveAttribute('aria-selected', 'true');
+  await box.press('Enter');
+  await expect(page).toHaveURL(/to=/);
 });

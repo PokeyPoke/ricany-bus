@@ -7,6 +7,7 @@ export type Route =
   | { name: 'plan'; from?: PlaceRef; to?: PlaceRef; mode: PlanMode; date?: string; time?: string; sel?: string }
   | { name: 'stop'; stopId: string }
   | { name: 'line'; number: string; dir: number; stopId?: string }
+  | { name: 'about' }
   | { name: 'bike'; uid: number }
   | { name: 'bus'; tripId: string }
   | { name: 'from'; groupId: string; line?: string; dir?: number }
@@ -40,7 +41,9 @@ export function parseHash(hash: string): Route {
     case 'stop':
       return parts[1] ? { name: 'stop', stopId: parts[1] } : { name: 'home' };
     case 'line':
-      return parts[1] ? { name: 'line', number: parts[1], dir: Number(q.get('dir')) || 0, stopId: opt(q.get('stop')) } : { name: 'home' };
+      return parts[1] ? { name: 'line', number: parts[1], dir: dir01(q.get('dir')), stopId: opt(q.get('stop')) } : { name: 'home' };
+    case 'about':
+      return { name: 'about' };
     case 'bike': {
       const uid = Number(parts[1]);
       return parts[1] && Number.isFinite(uid) ? { name: 'bike', uid } : { name: 'home' };
@@ -82,6 +85,8 @@ export function formatRoute(r: Route): string {
       if (r.stopId) q.set('stop', r.stopId);
       return `#/line/${encodeURIComponent(r.number)}?${q}`;
     }
+    case 'about':
+      return '#/about';
     case 'bike':
       return `#/bike/${r.uid}`;
     case 'bus':

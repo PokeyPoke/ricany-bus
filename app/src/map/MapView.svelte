@@ -146,11 +146,15 @@
     untrack(() => { popup?.remove(); popup = null; });
   });
 
+  let locating = $state(false);
   async function locate() {
+    if (locating) return;
+    locating = true;
     try {
       const p = await getLocation();
       map?.flyTo({ center: [p.lon, p.lat], zoom: 15 });
     } catch { /* the planner shows location errors; the map button fails quietly */ }
+    finally { locating = false; }
   }
 
   onMount(() => {
@@ -284,7 +288,7 @@
 
 <div class="map" bind:this={el}></div>
 {#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>{/if}
-<button class="locate" aria-label={$t('locate')} onclick={locate}>📍</button>
+<button class="locate" aria-label={$t('locate')} aria-busy={locating} onclick={locate}>{locating ? '⏳' : '📍'}</button>
 <LayersPanel />
 
 <style>

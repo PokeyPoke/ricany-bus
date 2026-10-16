@@ -64,9 +64,8 @@
   <h1>{group ? `🚏 ${group.name}` : $t('stopNotFound')}</h1>
 </div>
 
-{#if group && lineNo && !lines.length}
-  <p class="muted">{$t('lineNotFound')}</p>
-{:else if group}
+{#if group}
+  {#if lineNo && !lines.length}<p class="muted">{$t('lineNotFound')}</p>{/if}
   <PlaceInput label={$t('otherPlace')} value={undefined} stops={data.stops} target="to" onChange={choose} />
 
   {#each sections as s (s.l.number)}
@@ -76,7 +75,7 @@
           <LineBadge routeId={s.l.routeId} /> <span class="head">→ {s.direction.headsign}</span> <span aria-hidden="true">{s.open ? '▾' : '▸'}</span>
         </button>
         {#if !lineNo && s.l.directions.length > 1}
-          <button class="secondary flip" aria-label={$t('switchDirection')} onclick={() => (chosen[s.l.number] = s.l.directions.find((d) => d.directionId !== s.direction.directionId)!.directionId)}>⇄</button>
+          <button class="secondary flip" aria-label={`${$t('switchDirection')} ${s.l.number}`} onclick={() => (chosen[s.l.number] = s.l.directions.find((d) => d.directionId !== s.direction.directionId)!.directionId)}>⇄</button>
         {/if}
       </div>
       {#if s.open}

@@ -36,6 +36,7 @@
   <div
     class="handle" role="slider" tabindex="0" aria-label={$t('resize')}
     aria-valuemin={0} aria-valuemax={SNAPS.length - 1} aria-valuenow={snap}
+    aria-valuetext={$t(['sheetSmall', 'sheetMedium', 'sheetLarge'][snap] as 'sheetSmall')}
     onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} onkeydown={key}
   ><span></span></div>
   <div class="content">{@render children()}</div>

@@ -3,8 +3,8 @@
   import { get } from 'svelte/store';
   import { hmToSec, secToHM, pragueNow } from '@rb/shared';
   import type { AppData } from '../lib/data';
-  import { route, navigate } from '../lib/nav';
-  import type { Route } from '../lib/hashRoute';
+  import { route, navigate, lastHash } from '../lib/nav';
+  import { formatRoute, type Route } from '../lib/hashRoute';
   import { t } from '../lib/i18n';
   import { bikes, bikesOk, useBikes, useDelays } from '../lib/live';
   import { getLocation } from '../lib/geoloc';
@@ -99,16 +99,30 @@
   }
   function shift(minutes: number) {
     const n = pragueNow();
-    const base = r.mode === 'now' ? n.sec : hmToSec(r.time ?? secToHM(n.sec));
-    const sec = Math.max(0, Math.min(86340, base + minutes * 60));
-    update({ mode: r.mode === 'arr' ? 'arr' : 'dep', time: secToHM(sec), date: r.date ?? n.date });
+    const date = r.date ?? n.date;
+    const total = (r.mode === 'now' ? n.sec : hmToSec(r.time ?? secToHM(n.sec))) + minutes * 60;
+    const dayShift = Math.floor(total / 86400);
+    const sec = total - dayShift * 86400;
+    update({ mode: r.mode === 'arr' ? 'arr' : 'dep', time: secToHM(sec), date: addDays(date, dayShift) });
+  }
+  /** YYYYMMDD + n days (calendar arithmetic in UTC, so no DST surprises) */
+  function addDays(d: string, n: number): string {
+    if (!n) return d;
+    const x = new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8) + n));
+    return x.toISOString().slice(0, 10).replaceAll('-', '');
+  }
+  /** trip detail was opened from this same plan: pop history instead of pushing a duplicate entry */
+  function back() {
+    const base = formatRoute({ ...r, sel: undefined });
+    if (lastHash === base) history.back();
+    else navigate({ ...r, sel: undefined });
   }
   const isoDate = (d: string) => `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
   const fromIso = (s: string) => s.replaceAll('-', '');
 </script>
 
 {#if selected}
-  <TripDetail it={selected} {data} onBack={() => navigate({ ...r, sel: undefined })} />
+  <TripDetail it={selected} {data} onBack={back} />
 {:else}
   <div class="sheet-header">
     <button class="back" aria-label={$t('back')} onclick={() => navigate({ name: 'home' })}>←</button>

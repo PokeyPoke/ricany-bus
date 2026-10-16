@@ -1,8 +1,8 @@
 <script lang="ts">
   import { haversine } from '@rb/shared';
   import type { AppData } from '../lib/data';
-  import { bikes, bikesOk, bikesAt, useBikes } from '../lib/live';
-  import { focusPoints, tripOverlay, highlightLine } from '../lib/ui';
+  import { bikes, bikesOk, bikesAt, bikesStaleMin, useBikes } from '../lib/live';
+  import { now, focusPoints, tripOverlay, highlightLine } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { t, lang } from '../lib/i18n';
 
@@ -21,6 +21,7 @@
     ? data.stops.map((s) => ({ s, m: Math.round(haversine(st.lat, st.lon, s.lat, s.lon)) })).sort((a, b) => a.m - b.m)
         .filter((x, i, arr) => arr.findIndex((y) => y.s.name === x.s.name) === i).slice(0, 3)
     : []);
+  const staleMin = $derived(bikesStaleMin($bikesAt, Date.now() + 0 * $now.sec));
   const updated = $derived($bikesAt ? new Date($bikesAt).toLocaleTimeString($lang === 'cs' ? 'cs-CZ' : 'en-GB', { hour: '2-digit', minute: '2-digit' }) : '');
   const here = () => (st ? { lat: st.lat, lon: st.lon, name: st.name } : undefined);
 </script>
@@ -33,6 +34,7 @@
 {#if st}
   <p class="big-num"><strong>{$t('bikesAvailable', { n: st.bikes })}</strong> · {$t('freeRacks', { n: st.freeRacks })}</p>
   {#if updated}<p class="muted small">{$t('updatedAt', { t: updated })}</p>{/if}
+  {#if staleMin != null}<p class="warn small" role="status">{$t('bikesStale', { n: staleMin })}</p>{/if}
   <p class="muted small">{$t('paid')} · <a href="https://www.nextbikeczech.com/" target="_blank" rel="noopener">{$t('openNextbike')}</a></p>
   <div class="chips">
     <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', from: here() })}>{$t('planFromHere')}</button>

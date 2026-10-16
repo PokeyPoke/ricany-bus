@@ -102,3 +102,10 @@ export function resolveVehicleTrip(v: Vehicle, netFor: (d: string) => Network): 
   }
   return null;
 }
+
+/** age of the last successful bike fetch in whole minutes when older than 5 min, else null */
+export function bikesStaleMin(at: number | null, nowMs: number): number | null {
+  if (at == null) return null;
+  const age = nowMs - at;
+  return age > 5 * 60_000 ? Math.floor(age / 60_000) : null;
+}

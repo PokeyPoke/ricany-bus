@@ -19,6 +19,9 @@
   let timer: ReturnType<typeof setTimeout> | undefined;
   let ctrl: AbortController | null = null;
   const inputId = $derived(`pi-${target}`);
+  const listId = $derived(`pi-list-${target}`);
+  const optId = (i: number) => `pi-opt-${target}-${i}`;
+  let active = $state(-1);
 
   function cancelSearch() {
     clearTimeout(timer);
@@ -30,7 +33,39 @@
     query ? $savedPlaces.filter((s) => norm(s.label).includes(norm(query))) : $savedPlaces
   );
 
+  type Item = { key: string; icon: string; text: string; detail?: string; run: () => void };
+  const items = $derived.by((): Item[] => {
+    const actions: Item[] = [
+      { key: 'me', icon: '📍', text: $t('myLocation'), run: useMe },
+      { key: 'pick', icon: '📌', text: $t('pickOnMap'), run: pick }
+    ];
+    const found: Item[] = [
+      ...savedMatches.map((s): Item => ({ key: `s-${s.id}`, icon: s.icon, text: s.label, run: () => choose({ lat: s.lat, lon: s.lon, name: s.label }) })),
+      ...hits.map((h, i): Item => ({ key: `${h.kind}-${h.name}-${i}`, icon: h.kind === 'stop' ? '🚏' : '📌', text: h.name, detail: h.detail, run: () => choose(h) }))
+    ];
+    return query ? [...found, ...actions] : [...actions, ...found];
+  });
+  $effect(() => { void items.length; if (active >= items.length) active = items.length - 1; });
+  function onKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') {
+      open = false;
+      active = -1;
+      if ($pickTarget === target) pickTarget.set(null);
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) { open = true; return; }
+      if (!items.length) return;
+      const d = e.key === 'ArrowDown' ? 1 : -1;
+      active = (active + d + items.length) % items.length;
+      document.getElementById(optId(active))?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter' && open && active >= 0 && items[active]) {
+      e.preventDefault();
+      items[active].run();
+    }
+  }
+
   function onInput() {
+    active = -1;
     open = true;
     msg = '';
     cancelSearch();
@@ -53,6 +88,7 @@
     cancelSearch();
     onChange({ lat: p.lat, lon: p.lon, name: p.name });
     q = '';
+    active = -1;
     open = false;
     hits = [];
     msg = '';
@@ -84,41 +120,28 @@
   });
 </script>
 
-{#snippet actions()}
-  <li><button type="button" class="row" onmousedown={(e) => e.preventDefault()} onclick={useMe}>📍 {$t('myLocation')}</button></li>
-  <li><button type="button" class="row" onmousedown={(e) => e.preventDefault()} onclick={pick}>📌 {$t('pickOnMap')}</button></li>
-{/snippet}
-{#snippet found()}
-  {#each savedMatches as s (s.id)}
-    <li><button type="button" class="row" onmousedown={(e) => e.preventDefault()} onclick={() => choose({ lat: s.lat, lon: s.lon, name: s.label })}>{s.icon} {s.label}</button></li>
-  {/each}
-  {#each hits as h, i (`${h.kind}-${h.name}-${i}`)}
-    <li><button type="button" class="row" onmousedown={(e) => e.preventDefault()} onclick={() => choose(h)}>
-      <span>{h.kind === 'stop' ? '🚏' : '📌'}</span><span>{h.name} <small class="muted">{h.detail}</small></span>
-    </button></li>
-  {/each}
-{/snippet}
-
 <div class="pi">
   <label for={inputId}>{label}</label>
   <input
     id={inputId} type="search" autocomplete="off" bind:value={q} oninput={onInput}
+    role="combobox" aria-autocomplete="list" aria-expanded={open} aria-controls={listId}
+    aria-activedescendant={open && active >= 0 && active < items.length ? optId(active) : undefined}
     onfocus={() => (open = true)} onblur={() => setTimeout(() => (open = false), 200)}
     onclick={() => (open = true)}
-    onkeydown={(e) => { if (e.key === 'Escape') { open = false; if ($pickTarget === target) pickTarget.set(null); } }}
+    onkeydown={onKey}
     placeholder={value?.name ?? $t('searchPlaceholder')} class:has-value={!!value}
   />
   {#if $pickTarget === target}<p class="hint">{$t('tapMapHint')}</p>{/if}
   {#if open}
-    <ul class="suggest" role="listbox" aria-label={label}>
+    <ul class="suggest" role="listbox" id={listId} aria-label={label}>
       {#if msg}<li class="msg" role="status">{msg}</li>{/if}
-      {#if query}
-        {@render found()}
-        {@render actions()}
-      {:else}
-        {@render actions()}
-        {@render found()}
-      {/if}
+      {#each items as it, i (it.key)}
+        <!-- svelte-ignore a11y_click_events_have_key_events -->
+        <li id={optId(i)} role="option" aria-selected={i === active} class="row" class:active={i === active}
+          onmousedown={(e) => e.preventDefault()} onclick={it.run}>
+          <span aria-hidden="true">{it.icon}</span><span>{it.text}{#if it.detail} <small class="muted">{it.detail}</small>{/if}</span>
+        </li>
+      {/each}
     </ul>
   {/if}
   {#if msg && !open}<p class="msg" role="status">{msg}</p>{/if}
@@ -129,8 +152,9 @@
   label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 2px; }
   input.has-value::placeholder { color: var(--fg); opacity: 1; font-weight: 600; }
   .suggest { position: absolute; z-index: 20; left: 0; right: 0; list-style: none; margin: 4px 0 0; padding: 4px; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); max-height: 40vh; max-height: 40dvh; overflow-y: auto; }
-  .suggest .row { width: 100%; text-align: left; display: flex; gap: 8px; align-items: center; padding: 8px; border-radius: 8px; }
-  .suggest .row:hover { background: var(--chip); }
+  .suggest .row { text-align: left; display: flex; gap: 8px; align-items: center; padding: 8px; min-height: 44px; border-radius: 8px; cursor: pointer; }
+  .suggest .row:hover, .suggest .row.active { background: var(--chip); }
+  .suggest .row.active { outline: 2px solid var(--accent); }
   .hint { color: var(--accent); font-weight: 600; margin: 4px 0; }
   .msg { color: var(--warn); padding: 8px; font-size: 0.9rem; }
 </style>

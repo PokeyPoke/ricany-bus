@@ -56,7 +56,7 @@
   .row-head { display: flex; align-items: center; justify-content: space-between; }
   .link { color: var(--accent); min-height: 32px; }
   .saved { display: inline-flex; align-items: center; }
-  .x { width: 32px; min-height: 32px; color: var(--bad); }
+  .x { width: 44px; min-height: 44px; color: var(--bad); }
   .line { min-width: 44px; display: grid; place-items: center; }
   .attr { margin-top: 24px; }
 </style>

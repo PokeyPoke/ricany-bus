@@ -8,6 +8,7 @@
   import BusSheet from './sheets/BusSheet.svelte';
   import FromSheet from './sheets/FromSheet.svelte';
   import RideSheet from './sheets/RideSheet.svelte';
+  import About from './sheets/About.svelte';
   import LineView from './sheets/LineView.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
@@ -36,6 +37,7 @@
 <div class="app">
   <header class="topbar">
     <button class="search" onclick={() => navigate({ name: 'plan', mode: 'now' })}>🔍 {$t('whereTo')}</button>
+    <button class="icon" aria-label={$t('about')} onclick={() => navigate({ name: 'about' })}>ⓘ</button>
     <button class="icon" aria-label={$t('langToggle')} onclick={() => lang.update((l) => (l === 'cs' ? 'en' : 'cs'))}>{$lang === 'cs' ? 'EN' : 'CZ'}</button>
   </header>
   {#if stale}<div class="banner" role="status">{$t('staleData')}</div>{/if}
@@ -56,6 +58,8 @@
           <RideSheet {data} line={$route.line} dir={$route.dir} from={$route.from} to={$route.to} />
         {:else if $route.name === 'bike'}
           <BikeStation {data} uid={$route.uid} />
+        {:else if $route.name === 'about'}
+          <About {data} />
         {:else if $route.name === 'bus'}
           <BusSheet {data} tripId={$route.tripId} />
         {:else}
