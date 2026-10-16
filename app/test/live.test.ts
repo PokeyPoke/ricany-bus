@@ -65,3 +65,11 @@ it('freshVehicles keeps vehicles and resolveVehicleTrip uses startDate', () => {
   const hit = resolveVehicleTrip(v, (d) => buildNetwork(stops, timetable, d));
   expect(hit && hit.net.patterns[hit.p].trips[hit.trip]).toMatchObject({ id: 'n1', serviceDate: '20261018' });
 });
+
+it('resolveVehicleTrip finds a previous-day trip via the next day network', () => {
+  const v = { id: 'x', label: '1', tripId: 'n1', routeId: 'L1736', startDate: '20261018', lat: 50, lon: 14.6, bearing: null, speed: null, stopSeq: 1, ts: 1000 } as const;
+  const netFor = (d: string) => (d === '20261018' ? { ...buildNetwork(stops, timetable, d), patterns: [] } : buildNetwork(stops, timetable, d));
+  const hit = resolveVehicleTrip(v, netFor);
+  expect(hit && hit.net.date).toBe('20261019');
+  expect(hit && hit.net.patterns[hit.p].trips[hit.trip]).toMatchObject({ id: 'n1', serviceDate: '20261018' });
+});

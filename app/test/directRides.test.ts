@@ -25,10 +25,27 @@ describe('directRides', () => {
   });
 });
 
+describe('directRides dedupe', () => {
+  it('lists a past-midnight trip once when the query rolls into the next day', () => {
+    const tt = {
+      patterns: [{ routeId: 'L1731' as const, directionId: 0, headsign: 'S2', stops: [0, 1, 2], seq: [1, 2, 3],
+        trips: [{ id: 'late', service: 'W', arr: [H(24, 10), H(24, 15), H(24, 20)], dep: [H(24, 10), H(24, 15), H(24, 20)] }] }],
+      servicesByDate: { '20261019': ['W'] } as Record<string, string[]>,
+    };
+    const nf = (d: string) => buildNetwork(stops, tt, d);
+    const r = directRides(nf, '20261019', 0, 'L1731', 0, [0], [2]);
+    expect(r.map((x) => [x.tripId, x.serviceDate])).toEqual([['late', '20261019']]);
+  });
+});
+
 describe('downstreamStops', () => {
   it('lists later stops with typical minutes from the first trip', () => {
     const d = downstreamStops(timetable, stops, 'L1731', 0, [0, 1, 2], [0]);
     expect(d.map((x) => [x.group, x.minutes])).toEqual([[1, 5], [2, 10]]);
+  });
+  it('never lists the origin group', () => {
+    const d = downstreamStops(timetable, stops, 'L1731', 0, [0, 1, 2], [0, 1]);
+    expect(d.map((x) => x.group)).toEqual([2]);
   });
   it('downstreamStops on a branch pattern', () => {
     // a stop that only appears in one pattern still gets a time from that pattern; stops not reachable are skipped

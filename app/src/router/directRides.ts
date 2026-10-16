@@ -10,6 +10,7 @@ export function directRides(
   const from = new Set(fromStops);
   const to = new Set(toStops);
   const out: DirectRide[] = [];
+  const seenTrips = new Set<string>();
   for (let day = 0; day < maxDays && out.length < limit; day++) {
     const net = netFor(addDays(date, day));
     const sec = day === 0 ? fromSec : 0;
@@ -22,6 +23,9 @@ export function directRides(
           let j = b + 1;
           while (j < pat.stops.length && !to.has(pat.stops[j])) j++;
           if (j >= pat.stops.length) continue;
+          const key = `${t.id}|${t.serviceDate}`;
+          if (seenTrips.has(key)) break;
+          seenTrips.add(key);
           found.push({
             tripId: t.id, serviceDate: t.serviceDate, date: net.date, p, boardPos: b, alightPos: j, dep: t.dep[b], arr: t.arr[j],
             boardSeq: pat.seq[b], alightSeq: pat.seq[j], headsign: pat.headsign,
@@ -45,7 +49,7 @@ export function downstreamStops(
   const b0 = ordered.findIndex((s) => from.has(s));
   if (b0 < 0) return [];
   const pats = tt.patterns.filter((p) => p.routeId === routeId && p.directionId === directionId && p.trips.length > 0);
-  const seen = new Set<number>();
+  const seen = new Set<number>(fromStops.map((s) => stops[s].group));
   const out: Downstream[] = [];
   for (const s of ordered.slice(b0 + 1)) {
     let minutes: number | null = null;
