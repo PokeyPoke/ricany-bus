@@ -7,7 +7,14 @@ const netFor = (d: string) => buildNetwork(stops, timetable, d);
 describe('directRides', () => {
   it('lists departures of the line from A that reach B, in time order', () => {
     const r = directRides(netFor, '20261019', H(7, 55), 'L1731', 0, [0], [2]);
-    expect(r.map((x) => [x.tripId, x.dep, x.arr])).toEqual([['a1', H(8, 0), H(8, 10)], ['a2', H(8, 30), H(8, 40)]]);
+    expect(r.map((x) => [x.tripId, x.date, x.dep, x.arr])).toEqual([
+      ['a1', '20261019', H(8, 0), H(8, 10)], ['a2', '20261019', H(8, 30), H(8, 40)],
+      ['a1', '20261020', H(8, 0), H(8, 10)], ['a2', '20261020', H(8, 30), H(8, 40)],
+    ]);
+  });
+  it('limit 3 returns today two plus the first of tomorrow', () => {
+    const r = directRides(netFor, '20261019', H(7, 55), 'L1731', 0, [0], [2], 3);
+    expect(r.map((x) => [x.tripId, x.date])).toEqual([['a1', '20261019'], ['a2', '20261019'], ['a1', '20261020']]);
   });
   it('rolls to the next service day', () => {
     const r = directRides(netFor, '20261019', H(9, 0), 'L1731', 0, [0], [2], 1);

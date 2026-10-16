@@ -10,7 +10,7 @@ export function directRides(
   const from = new Set(fromStops);
   const to = new Set(toStops);
   const out: DirectRide[] = [];
-  for (let day = 0; day < maxDays && out.length === 0; day++) {
+  for (let day = 0; day < maxDays && out.length < limit; day++) {
     const net = netFor(addDays(date, day));
     const sec = day === 0 ? fromSec : 0;
     const found: DirectRide[] = [];
