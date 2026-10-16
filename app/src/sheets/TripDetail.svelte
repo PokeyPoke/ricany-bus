@@ -4,14 +4,26 @@
   import type { AppData } from '../lib/data';
   import type { Itinerary } from '../router/types';
   import { overlayDelays } from '../router/delays';
-  import { delays, delaysOk } from '../lib/live';
-  import { tripOverlay, focusPoints } from '../lib/ui';
+  import { delays, delaysOk, positions, freshVehicles, usePositions } from '../lib/live';
+  import { tripOverlay, focusPoints, now } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { t } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
   import DelayBadge from '../components/DelayBadge.svelte';
 
   let { it, data, onBack }: { it: Itinerary; data: AppData; onBack: () => void } = $props();
+  $effect(() => usePositions());
+  const fresh = $derived(freshVehicles($positions, Date.now() + 0 * $now.sec));
+  function liveLine(l: Extract<Itinerary['legs'][number], { kind: 'bus' }>): string | null {
+    const v = fresh.find((x) => x.tripId === l.tripId && x.startDate === l.serviceDate);
+    if (!v || v.stopSeq == null) return null;
+    const pat = data.timetable.patterns[l.pattern];
+    const pos = pat.seq.findIndex((s) => s >= v.stopSeq!);
+    if (pos < 0) return null;
+    const away = l.boardPos - pos;
+    if (away > 0) return $t('busStopsAway', { n: away });
+    return $t('busNow', { stop: data.stops[pat.stops[pos]].name });
+  }
   const ov = $derived(overlayDelays(it, $delays));
   const mins = (a: number, b: number) => Math.max(1, Math.round((b - a) / 60));
   const stopLabel = (i: number) => `${data.stops[i].name}${data.stops[i].platform ? ` (${data.stops[i].platform})` : ''}`;
@@ -54,6 +66,7 @@
           <div class="line"><LineBadge routeId={l.routeId} /> <span>{$t('toward', { h: l.headsign })}</span></div>
           <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.from].id })}>{stopLabel(l.from)}</button>
           <div class="small muted">{$t('stopsCount', { n: l.stopCount })}</div>
+          {#if liveLine(l)}<div class="small live">🚌 {liveLine(l)}</div>{/if}
           <div class="arr">
             {formatHM(l.arrive)}{#if $delaysOk}<DelayBadge sec={ov.alightDelay[i]} live={$delaysOk} />{/if}
             <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.to].id })}>{stopLabel(l.to)}</button>
@@ -75,5 +88,6 @@
   .line { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
   .stoplink { min-height: 32px; text-align: left; color: var(--accent); font-weight: 600; padding: 0; }
   .arr { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .live { color: var(--accent); font-weight: 600; }
   .risk { color: var(--bad); font-weight: 700; margin: 0 0 6px; }
 </style>

@@ -5,6 +5,7 @@
   import Planner from './sheets/Planner.svelte';
   import StopBoard from './sheets/StopBoard.svelte';
   import BikeStation from './sheets/BikeStation.svelte';
+  import BusSheet from './sheets/BusSheet.svelte';
   import LineView from './sheets/LineView.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
@@ -51,6 +52,8 @@
           <LineView {data} number={$route.number} dir={$route.dir} stopId={$route.stopId} />
         {:else if $route.name === 'bike'}
           <BikeStation {data} uid={$route.uid} />
+        {:else if $route.name === 'bus'}
+          <BusSheet {data} tripId={$route.tripId} />
         {:else}
           <Home {data} />
         {/if}

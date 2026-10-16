@@ -33,12 +33,16 @@ async function fetchDelays(signal: AbortSignal): Promise<DelaysResponse> {
   return (await r.json()) as DelaysResponse;
 }
 
+interface VisDoc { visibilityState: string; addEventListener: (t: string, f: () => void) => void; removeEventListener: (t: string, f: () => void) => void }
+
 export function createPoller<T>(
   fetcher: (s: AbortSignal) => Promise<T>, ms: number, value: Writable<T | null>, ok: Writable<boolean>, onSuccess?: (at: number) => void,
+  doc: VisDoc | undefined = globalThis.document,
 ): () => () => void {
   let refs = 0;
   let timer: ReturnType<typeof setInterval> | undefined;
   let ctrl: AbortController | null = null;
+  const hidden = () => doc?.visibilityState === 'hidden';
   async function tick() {
     ctrl?.abort();
     const c = (ctrl = new AbortController());
@@ -52,16 +56,34 @@ export function createPoller<T>(
       if ((e as Error)?.name !== 'AbortError') ok.set(false);
     }
   }
+  const onVis = () => {
+    if (refs === 0) return;
+    if (hidden()) { clearInterval(timer); timer = undefined; return; }
+    if (timer === undefined) { void tick(); timer = setInterval(tick, ms); }
+  };
   return () => {
-    if (refs++ === 0) { void tick(); timer = setInterval(tick, ms); }
+    if (refs++ === 0) {
+      void tick();
+      if (!hidden()) timer = setInterval(tick, ms);
+      doc?.addEventListener('visibilitychange', onVis);
+    }
     let released = false;
     return () => {
       if (released) return;
       released = true;
-      if (--refs === 0) { clearInterval(timer); ctrl?.abort(); }
+      if (--refs === 0) { clearInterval(timer); timer = undefined; ctrl?.abort(); doc?.removeEventListener('visibilitychange', onVis); }
     };
   };
 }
+
+async function fetchPositions(signal: AbortSignal): Promise<PositionsResponse> {
+  const r = await fetch(`${WORKER_URL}/positions`, { signal });
+  if (!r.ok) throw new Error(`positions ${r.status}`);
+  return (await r.json()) as PositionsResponse;
+}
+export const positions = writable<PositionsResponse | null>(null);
+export const positionsOk = writable(true);
+export const usePositions = createPoller(fetchPositions, 15_000, positions, positionsOk);
 
 export const useDelays = createPoller(fetchDelays, 30_000, delays, delaysOk);
 export const useBikes = createPoller(fetchBikes, 60_000, bikes, bikesOk, (at) => bikesAt.set(at));

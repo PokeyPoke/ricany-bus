@@ -11,6 +11,7 @@ describe('hashRoute', () => {
     rt({ name: 'stop', stopId: 'U9364Z11' });
     rt({ name: 'line', number: '91', dir: 1, stopId: 'U6790Z1' });
     rt({ name: 'bike', uid: 27581951 });
+    rt({ name: 'bus', tripId: 'L1731_12 3' });
   });
   it('falls back to home or defaults on garbage', () => {
     expect(parseHash('')).toEqual({ name: 'home' });

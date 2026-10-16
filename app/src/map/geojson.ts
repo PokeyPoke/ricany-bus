@@ -1,4 +1,4 @@
-import { LINE_STYLE, type LineRec, type StopRec, type StopGroup } from '@rb/shared';
+import { LINE_STYLE, type Vehicle, type LineRec, type StopRec, type StopGroup } from '@rb/shared';
 import { ringKey } from './rings';
 import type { AppData } from '../lib/data';
 import type { BikeStation, Itinerary } from '../router/types';
@@ -37,6 +37,11 @@ export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: Li
 }
 
 export const bikesGeoJson = (stations: BikeStation[]) => fc(stations.map((b) => point(b.lon, b.lat, { uid: b.uid, name: b.name, bikes: b.bikes })));
+
+export const busesGeoJson = (vehicles: Vehicle[]) => fc(vehicles.map((v) => {
+  const s = LINE_STYLE[v.routeId];
+  return point(v.lon, v.lat, { tripId: v.tripId, routeId: v.routeId, number: s.number, color: s.color, text: s.text, bearing: v.bearing ?? -1 });
+}));
 
 export function tripGeoJson(it: Itinerary, data: AppData): FC {
   return fc(it.legs.map((l) => {

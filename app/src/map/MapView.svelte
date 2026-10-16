@@ -7,13 +7,13 @@
   import { RIC_CENTER } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
-  import { bikes, bikesOk, useBikes } from '../lib/live';
-  import { bikesLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection } from '../lib/ui';
+  import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles } from '../lib/live';
+  import { bikesLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
   import { addLayers } from './layers';
-  import { bikesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
+  import { bikesGeoJson, busesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
 
   // maplibre 6 locates its worker via import.meta.url, which breaks under Vite's dep pre-bundling; point it at the emitted asset.
   maplibregl.setWorkerUrl(workerUrl);
@@ -58,6 +58,8 @@
       return fs.reduce<maplibregl.MapGeoJSONFeature | undefined>((best, f) => (!best || d(f) < d(best) ? f : best), undefined);
     };
     const p = (f: maplibregl.MapGeoJSONFeature) => f.properties as Record<string, string | number>;
+    const bus = nearest(q('buses', near(22)));
+    if (bus) { navigate({ name: 'bus', tripId: String(p(bus).tripId) }); return; }
     const bike = q('bikes', near(10))[0];
     if (bike) { navigate({ name: 'bike', uid: Number(p(bike).uid) }); return; }
     const ls = nearest(q('line-stops', near(22)));
@@ -100,7 +102,7 @@
       const cur = (id: string[]) => m.queryRenderedFeatures(e.point, { layers: id.filter((i) => m.getLayer(i)) });
       const h = cur(hit).filter((f) => f.layer.id !== 'line-stops' || m.getLayoutProperty('line-stops', 'visibility') === 'visible')[0];
       if (canHover) hoverGroup.set(h ? Number((h.properties as { gi: number }).gi) : null);
-      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['bikes', 'lines']).length ? 'pointer' : '';
+      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['buses', 'bikes', 'lines']).length ? 'pointer' : '';
     });
     m.on('mouseout', () => hoverGroup.set(null));
     return () => { clearTimeout(timer); hoverGroup.set(null); m.remove(); map = null; };
@@ -125,6 +127,12 @@
     for (const id of ['line-stops', 'line-stops-num']) map.setLayoutProperty(id, 'visibility', line ? 'visible' : 'none');
     for (const id of ['groups', 'groups-hover']) map.setPaintProperty(id, 'icon-opacity', line ? 0.4 : 1);
     map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
+  });
+  $effect(() => usePositions());
+  $effect(() => {
+    if (!gen || !map) return;
+    void $now; // re-filter stale vehicles on every clock tick
+    setData('buses', busesGeoJson(freshVehicles($positions, Date.now())));
   });
   $effect(() => { if ($bikesLayerOn) return useBikes(); });
   $effect(() => {

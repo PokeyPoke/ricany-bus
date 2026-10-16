@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { LineRec } from '@rb/shared';
-import { linesGeoJson, groupsGeoJson, lineStopsGeoJson, bikesGeoJson, tripGeoJson, bbox } from '../src/map/geojson';
+import { linesGeoJson, groupsGeoJson, lineStopsGeoJson, bikesGeoJson, busesGeoJson, tripGeoJson, bbox } from '../src/map/geojson';
 import type { AppData } from '../src/lib/data';
 import type { Itinerary } from '../src/router/types';
 import { stops, timetable, H } from './fixtures/net';
@@ -41,5 +41,17 @@ describe('geojson', () => {
   it('bbox', () => {
     expect(bbox([[1, 2], [3, 0], [2, 5]])).toEqual([[1, 0], [3, 5]]);
     expect(bbox([])).toBeNull();
+  });
+});
+
+describe('busesGeoJson', () => {
+  it('maps vehicles to points with line style and bearing', () => {
+    const v = (o: object) => ({ id: 'v', label: '1', tripId: 'T1', routeId: 'L1731', startDate: '20261016', lat: 49.99, lon: 14.66, bearing: 90, speed: 5, stopSeq: 2, ts: 1, ...o }) as never;
+    const fc = busesGeoJson([v({}), v({ tripId: 'T2', bearing: null })]);
+    expect(fc.features[0].geometry).toEqual({ type: 'Point', coordinates: [14.66, 49.99] });
+    expect(fc.features[0].properties).toMatchObject({ tripId: 'T1', routeId: 'L1731', number: '1', bearing: 90 });
+    expect(typeof fc.features[0].properties.color).toBe('string');
+    expect(typeof fc.features[0].properties.text).toBe('string');
+    expect(fc.features[1].properties.bearing).toBe(-1);
   });
 });

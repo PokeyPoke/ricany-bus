@@ -73,3 +73,35 @@ it('resolveVehicleTrip finds a previous-day trip via the next day network', () =
   expect(hit && hit.net.date).toBe('20261019');
   expect(hit && hit.net.patterns[hit.p].trips[hit.trip]).toMatchObject({ id: 'n1', serviceDate: '20261018' });
 });
+
+describe('createPoller visibility', () => {
+  afterEach(() => vi.useRealTimers());
+  it('pauses while hidden and ticks on return', async () => {
+    vi.useFakeTimers();
+    const handlers: (() => void)[] = [];
+    const doc = {
+      visibilityState: 'visible',
+      addEventListener: (_t: string, f: () => void) => handlers.push(f),
+      removeEventListener: (_t: string, f: () => void) => { handlers.splice(handlers.indexOf(f), 1); },
+    };
+    const fetcher = vi.fn(async () => 1);
+    const acquire = createPoller(fetcher, 15_000, writable<number | null>(null), writable(true), undefined, doc);
+    const release = acquire();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    doc.visibilityState = 'hidden';
+    handlers.forEach((h) => h());
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    doc.visibilityState = 'visible';
+    handlers.forEach((h) => h());
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    release();
+    expect(handlers.length).toBe(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+});

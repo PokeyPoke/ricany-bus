@@ -2,6 +2,8 @@ import type * as maplibregl from 'maplibre-gl';
 import type { AppData } from '../lib/data';
 import { linesGeoJson, groupsGeoJson, type FC } from './geojson';
 import { drawRing, ringKey } from './rings';
+import { drawBusIcon, drawArrow } from './busIcons';
+import { LINE_ORDER } from '@rb/shared';
 
 const empty: FC = { type: 'FeatureCollection', features: [] };
 const FONT = ['Noto Sans Regular'];
@@ -51,4 +53,15 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
   map.addLayer({ id: 'bikes-count', type: 'symbol', source: 'bikes', minzoom: 13, layout: {
     'text-field': ['to-string', ['get', 'bikes']], 'text-font': FONT_BOLD, 'text-size': 11, 'text-allow-overlap': true,
   }, paint: { 'text-color': '#ffffff' } });
+
+  // live buses: above everything
+  map.addSource('buses', { type: 'geojson', data: empty as never });
+  for (const r of LINE_ORDER) if (!map.hasImage(`bus-${r}`)) map.addImage(`bus-${r}`, drawBusIcon(r));
+  if (!map.hasImage('bus-arrow')) map.addImage('bus-arrow', drawArrow());
+  map.addLayer({ id: 'buses-arrow', type: 'symbol', source: 'buses', filter: ['>=', ['get', 'bearing'], 0], layout: {
+    'icon-image': 'bus-arrow', 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': [0, -22], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+  } });
+  map.addLayer({ id: 'buses', type: 'symbol', source: 'buses', layout: {
+    'icon-image': ['concat', 'bus-', ['get', 'routeId']], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
+  } });
 }

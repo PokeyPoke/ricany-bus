@@ -7,7 +7,8 @@ export type Route =
   | { name: 'plan'; from?: PlaceRef; to?: PlaceRef; mode: PlanMode; date?: string; time?: string; sel?: string }
   | { name: 'stop'; stopId: string }
   | { name: 'line'; number: string; dir: number; stopId?: string }
-  | { name: 'bike'; uid: number };
+  | { name: 'bike'; uid: number }
+  | { name: 'bus'; tripId: string };
 
 const encPlace = (p: PlaceRef) => `${+p.lat.toFixed(6)},${+p.lon.toFixed(6)},${p.name}`;
 function decPlace(s: string | null): PlaceRef | undefined {
@@ -41,6 +42,8 @@ export function parseHash(hash: string): Route {
       const uid = Number(parts[1]);
       return parts[1] && Number.isFinite(uid) ? { name: 'bike', uid } : { name: 'home' };
     }
+    case 'bus':
+      return parts[1] ? { name: 'bus', tripId: parts[1] } : { name: 'home' };
     default:
       return { name: 'home' };
   }
@@ -69,5 +72,7 @@ export function formatRoute(r: Route): string {
     }
     case 'bike':
       return `#/bike/${r.uid}`;
+    case 'bus':
+      return `#/bus/${encodeURIComponent(r.tripId)}`;
   }
 }

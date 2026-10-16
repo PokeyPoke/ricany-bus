@@ -81,6 +81,10 @@ const cs = {
   stopNotFound: 'Zastávka nenalezena',
   lineNotFound: 'Linka nenalezena',
   stationNotFound: 'Stanice nenalezena',
+  busGone: 'Autobus už neposílá polohu',
+  busNow: 'autobus je teď u zastávky {stop}',
+  busStopsAway: 'autobus je {n} zast. od vás',
+  livePosition: 'Poloha autobusu',
   locate: 'Moje poloha na mapě',
   mapFallback: 'Mapa se nenačetla — zobrazuji jen linky a zastávky',
 } as const;
@@ -167,6 +171,10 @@ const en: Record<Key, string> = {
   stopNotFound: 'Stop not found',
   lineNotFound: 'Line not found',
   stationNotFound: 'Station not found',
+  busGone: 'The bus has stopped sending its position',
+  busNow: 'bus is now at {stop}',
+  busStopsAway: 'bus is {n} stops away',
+  livePosition: 'Bus position',
   locate: 'Show my location',
   mapFallback: "Map didn't load — showing lines and stops only",
 };
