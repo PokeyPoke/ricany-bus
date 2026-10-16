@@ -6,7 +6,7 @@ import type { BikeStation, Itinerary } from '../router/types';
 export interface Feature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: [number, number] } | { type: 'LineString'; coordinates: [number, number][] };
-  properties: Record<string, string | number>;
+  properties: Record<string, string | number | number[]>;
 }
 export interface FC { type: 'FeatureCollection'; features: Feature[] }
 
@@ -38,9 +38,28 @@ export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: Li
 
 export const bikesGeoJson = (stations: BikeStation[]) => fc(stations.map((b) => point(b.lon, b.lat, { uid: b.uid, name: b.name, bikes: b.bikes })));
 
-export const busesGeoJson = (vehicles: Vehicle[]) => fc(vehicles.map((v) => {
+/** Orbit radius (px) of the direction arrow around the bus icon centre. */
+export const ARROW_ORBIT = 34;
+
+/**
+ * icon-offset for the direction arrow. MapLibre rotates icon-offset together with icon-rotate, so the wanted screen
+ * vector (displacement + orbit along the travel direction) is pre-rotated by the inverse angle.
+ */
+export function arrowOffset(disp: [number, number], bearing: number, mapBearing = 0, orbit = ARROW_ORBIT): [number, number] {
+  const a = ((bearing - mapBearing) * Math.PI) / 180;
+  const vx = disp[0] + orbit * Math.sin(a), vy = disp[1] - orbit * Math.cos(a);
+  return [vx * Math.cos(a) + vy * Math.sin(a), -vx * Math.sin(a) + vy * Math.cos(a)];
+}
+
+/** offsets: screen-pixel displacement per tripId (from spreadOffsets). */
+export const busesGeoJson = (vehicles: Vehicle[], offsets: Record<string, [number, number]> = {}, mapBearing = 0) => fc(vehicles.map((v) => {
   const s = LINE_STYLE[v.routeId];
-  return point(v.lon, v.lat, { tripId: v.tripId, routeId: v.routeId, number: s.number, color: s.color, text: s.text, bearing: v.bearing ?? -1 });
+  const d = offsets[v.tripId] ?? [0, 0];
+  const bearing = v.bearing ?? -1;
+  return point(v.lon, v.lat, {
+    tripId: v.tripId, routeId: v.routeId, number: s.number, color: s.color, text: s.text, bearing,
+    off: d, disp: Math.hypot(d[0], d[1]), aoff: bearing >= 0 ? arrowOffset(d, bearing, mapBearing) : [0, 0],
+  });
 }));
 
 export function tripGeoJson(it: Itinerary, data: AppData): FC {

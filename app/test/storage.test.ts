@@ -23,3 +23,18 @@ describe('storage', () => {
     expect(load('k', [])).toEqual([]);
   });
 });
+
+describe('persisted layer toggles', () => {
+  it('coerces stored values and writes nothing until toggled', async () => {
+    const mem: Record<string, string> = { 'rb.t.a': '"false"', 'rb.t.b': '1' };
+    const ls = { getItem: (k: string) => mem[k] ?? null, setItem: (k: string, v: string) => { mem[k] = v; } };
+    (globalThis as unknown as { localStorage: unknown }).localStorage = ls;
+    const { persisted } = await import('../src/lib/ui');
+    const { get } = await import('svelte/store');
+    const a = persisted('rb.t.a', true), b = persisted('rb.t.b', true), c = persisted('rb.t.c', false);
+    expect([get(a), get(b), get(c)]).toEqual([false, true, false]);
+    expect(mem['rb.t.c']).toBeUndefined();
+    c.set(true);
+    expect(mem['rb.t.c']).toBe('true');
+  });
+});

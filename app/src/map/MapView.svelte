@@ -1,21 +1,22 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { get } from 'svelte/store';
   import * as maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
   import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
-  import { RIC_CENTER } from '@rb/shared';
+  import { RIC_CENTER, type Vehicle } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
   import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles } from '../lib/live';
   import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
-  import { navigate } from '../lib/nav';
+  import { navigate, route } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
   import { addLayers } from './layers';
   import { declutter, poiCategory } from './basemap';
   import LayersPanel from '../components/LayersPanel.svelte';
   import { bikesGeoJson, busesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
+  import { spreadOffsets } from './spread';
 
   // maplibre 6 locates its worker via import.meta.url, which breaks under Vite's dep pre-bundling; point it at the emitted asset.
   maplibregl.setWorkerUrl(workerUrl);
@@ -60,8 +61,9 @@
       return fs.reduce<maplibregl.MapGeoJSONFeature | undefined>((best, f) => (!best || d(f) < d(best) ? f : best), undefined);
     };
     const p = (f: maplibregl.MapGeoJSONFeature) => f.properties as Record<string, string | number>;
-    const bus = nearest(q('buses', near(22)));
-    if (bus) { navigate({ name: 'bus', tripId: String(p(bus).tripId) }); return; }
+    // buses: hit-test in screen space against the (possibly fanned-out) icon rectangles, nearest centre wins
+    const bus = busHit(e.point.x, e.point.y);
+    if (bus) { navigate({ name: 'bus', tripId: bus }); return; }
     const bike = q('bikes', near(10))[0];
     if (bike) { navigate({ name: 'bike', uid: Number(p(bike).uid) }); return; }
     const ls = nearest(q('line-stops', near(22)));
@@ -76,6 +78,39 @@
     if (place) { showPlace(place); return; }
     const l = q('lines', near(10))[0];
     if (l) navigate({ name: 'line', number: String(p(l).number), dir: Number(p(l).directionId) || 0 });
+  }
+
+  /** screen-space icon centres of the live buses as last drawn: tripId -> [x, y] */
+  let busCentres: { tripId: string; x: number; y: number }[] = [];
+  function busHit(px: number, py: number): string | null {
+    let best: string | null = null, bd = Infinity;
+    for (const b of busCentres) {
+      const dx = Math.abs(b.x - px), dy = Math.abs(b.y - py);
+      if (dx > 24 + 6 || dy > 27 + 6) continue; // icon is 48x54 plus a little finger slack
+      const d = dx * dx + dy * dy;
+      if (d < bd) { bd = d; best = b.tripId; }
+    }
+    return best;
+  }
+
+  let lastVehicles: Vehicle[] = [];
+  /** project, fan out overlapping buses, push to the buses + leader sources */
+  function refreshBuses(vehicles: Vehicle[] = lastVehicles) {
+    lastVehicles = vehicles;
+    const m = map;
+    if (!m || !m.getSource('buses')) return;
+    const proj = vehicles.map((v) => ({ v, pt: m.project([v.lon, v.lat]) }));
+    const offs = spreadOffsets(proj.map(({ v, pt }) => ({ id: v.tripId, x: pt.x, y: pt.y })), 46, 40);
+    busCentres = proj.map(({ v, pt }) => { const o = offs[v.tripId] ?? [0, 0]; return { tripId: v.tripId, x: pt.x + o[0], y: pt.y + o[1] }; });
+    setData('buses', busesGeoJson(vehicles, offs, m.getBearing()));
+    setData('buses-leader', {
+      type: 'FeatureCollection',
+      features: proj.filter(({ v }) => { const o = offs[v.tripId]; return o && (o[0] || o[1]); }).map(({ v, pt }) => {
+        const o = offs[v.tripId];
+        const to = m.unproject([pt.x + o[0], pt.y + o[1]]);
+        return { type: 'Feature' as const, geometry: { type: 'LineString' as const, coordinates: [[v.lon, v.lat], [to.lng, to.lat]] as [number, number][] }, properties: {} };
+      }),
+    });
   }
 
   let popup: maplibregl.Popup | null = null;
@@ -96,6 +131,13 @@
     b.onclick = () => { pp.remove(); navigate({ name: 'plan', mode: 'now', to: { lat, lon, name } }); };
   }
 
+  let firstRoute = true;
+  $effect(() => {
+    void $route; // any route change closes the place popup
+    if (firstRoute) { firstRoute = false; return; }
+    untrack(() => { popup?.remove(); popup = null; });
+  });
+
   async function locate() {
     try {
       const p = await getLocation();
@@ -107,14 +149,20 @@
     const m = new maplibregl.Map({ container: el, style: MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
     map = m;
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    let styled = false;
+    let styled = false, warned = false;
     const fallBack = () => {
       if (styled || fellBack) return;
       fellBack = true;
       m.setStyle(FALLBACK_STYLE);
     };
     // style.load fires for the first style and again after the fallback swap; setStyle drops our sources/layers/images
-    m.on('style.load', () => { styled = true; addLayers(m, data); declutter(m); gen++; });
+    m.on('style.load', () => {
+      styled = true;
+      try { addLayers(m, data); declutter(m); } catch (err) { if (!warned) { warned = true; console.warn('map setup failed', err); } }
+      gen++;
+    });
+    m.on('moveend', () => refreshBuses());
+    m.on('zoomend', () => refreshBuses());
     m.on('error', fallBack);
     const timer = setTimeout(fallBack, 8000);
     m.on('click', onClick);
@@ -124,7 +172,7 @@
       const cur = (id: string[]) => m.queryRenderedFeatures(e.point, { layers: id.filter((i) => m.getLayer(i)) });
       const h = cur(hit).filter((f) => f.layer.id !== 'line-stops' || m.getLayoutProperty('line-stops', 'visibility') === 'visible')[0];
       if (canHover) hoverGroup.set(h ? Number((h.properties as { gi: number }).gi) : null);
-      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['buses', 'bikes', 'places', 'places-detail', 'lines']).length ? 'pointer' : '';
+      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || busHit(e.point.x, e.point.y) || cur(['bikes', 'places', 'places-detail', 'lines']).length ? 'pointer' : '';
     });
     m.on('mouseout', () => hoverGroup.set(null));
     return () => { clearTimeout(timer); popup?.remove(); hoverGroup.set(null); m.remove(); map = null; };
@@ -154,7 +202,7 @@
   $effect(() => {
     if (!gen || !map) return;
     void $now; // re-filter stale vehicles on every clock tick
-    setData('buses', busesGeoJson(freshVehicles($positions, Date.now())));
+    refreshBuses(freshVehicles($positions, Date.now()));
   });
   $effect(() => { if ($bikesLayerOn) return useBikes(); });
   $effect(() => {
@@ -168,17 +216,19 @@
     for (const id of ['places', 'places-detail']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v);
     if (map.getLayer('building')) map.setLayoutProperty('building', 'visibility', $buildingsLayerOn ? 'visible' : 'none');
   });
-  // live buses of the open trip pulse; a cheap paint tick (6 fps) that stops with the effect
+  // live buses of the open trip pulse; a cheap paint tick (6 fps) keyed on the overlay's trip ids only (positions polls don't restart it)
+  const pulseKey = $derived(($tripOverlay?.legs ?? []).flatMap((l) => (l.kind === 'bus' ? [l.tripId] : [])).join(','));
   $effect(() => {
+    const key = pulseKey;
     if (!gen || !map || !map.getLayer('buses-pulse')) return;
     const m = map;
-    const ids = ($tripOverlay?.legs ?? []).flatMap((l) => (l.kind === 'bus' ? [l.tripId] : []));
-    const live = new Set(freshVehicles($positions, Date.now()).map((v) => v.tripId));
-    const on = ids.filter((id) => live.has(id));
-    m.setFilter('buses-pulse', ['in', ['get', 'tripId'], ['literal', on]] as maplibregl.FilterSpecification);
-    if (!on.length) return;
+    const ids = key ? key.split(',') : [];
+    m.setFilter('buses-pulse', ['in', ['get', 'tripId'], ['literal', ids]] as maplibregl.FilterSpecification);
+    if (!ids.length) return;
+    for (const prop of ['circle-radius', 'circle-opacity']) m.setPaintProperty('buses-pulse', `${prop}-transition` as never, { duration: 0, delay: 0 } as never);
     const t0 = performance.now();
     const i = setInterval(() => {
+      if (document.hidden) return;
       const ph = ((performance.now() - t0) % 1400) / 1400;
       m.setPaintProperty('buses-pulse', 'circle-radius', 20 + ph * 16);
       m.setPaintProperty('buses-pulse', 'circle-opacity', 0.55 * (1 - ph));

@@ -2,13 +2,22 @@
   import { bikesLayerOn, poiLayerOn, buildingsLayerOn } from '../lib/ui';
   import { t } from '../lib/i18n';
   let open = $state(false);
+  let root: HTMLDivElement;
+  $effect(() => {
+    if (!open) return;
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') open = false; };
+    const away = (e: Event) => { if (root && !root.contains(e.target as Node)) open = false; };
+    addEventListener('keydown', key);
+    addEventListener('pointerdown', away, true);
+    return () => { removeEventListener('keydown', key); removeEventListener('pointerdown', away, true); };
+  });
 </script>
 
 {#snippet sw(label: string, on: boolean, toggle: () => void)}
   <button class="sw" role="switch" aria-checked={on} onclick={toggle}><span class="knob" aria-hidden="true"></span>{label}</button>
 {/snippet}
 
-<div class="layers">
+<div class="layers" bind:this={root}>
   <button class="btn" aria-label={$t('layers')} aria-expanded={open} onclick={() => (open = !open)}>🗂</button>
   {#if open}
     <div class="pop" role="group" aria-label={$t('layers')}>

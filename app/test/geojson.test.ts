@@ -54,4 +54,15 @@ describe('busesGeoJson', () => {
     expect(typeof fc.features[0].properties.text).toBe('string');
     expect(fc.features[1].properties.bearing).toBe(-1);
   });
+  it('carries displacement and a pre-rotated arrow offset', () => {
+    const v = { id: 'v', label: '1', tripId: 'T1', routeId: 'L1731', startDate: '20261016', lat: 49.99, lon: 14.66, bearing: 90, speed: 5, stopSeq: 2, ts: 1 } as never;
+    const f = busesGeoJson([v], { T1: [0, -40] }).features[0].properties;
+    expect(f.off).toEqual([0, -40]);
+    expect(f.disp).toBe(40);
+    // rotating aoff clockwise by the bearing must give displacement + orbit along east
+    const [x, y] = f.aoff as number[];
+    const a = Math.PI / 2;
+    expect(x * Math.cos(a) - y * Math.sin(a)).toBeCloseTo(34);
+    expect(x * Math.sin(a) + y * Math.cos(a)).toBeCloseTo(-40);
+  });
 });
