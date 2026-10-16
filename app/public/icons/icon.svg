@@ -1,10 +1,39 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#0b5cad"/>
-  <rect x="116" y="120" width="280" height="230" rx="40" fill="#fff"/>
-  <rect x="146" y="150" width="220" height="100" rx="14" fill="#0b5cad"/>
-  <circle cx="176" cy="300" r="22" fill="#0b5cad"/>
-  <circle cx="336" cy="300" r="22" fill="#0b5cad"/>
-  <rect x="150" y="350" width="44" height="44" rx="10" fill="#fff"/>
-  <rect x="318" y="350" width="44" height="44" rx="10" fill="#fff"/>
-  <text x="256" y="236" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="700" fill="#fff" text-anchor="middle">0 Kč</text>
+  <!-- side mirrors -->
+  <rect x="82" y="190" width="40" height="52" rx="18" fill="#e4eef9"/>
+  <rect x="390" y="190" width="40" height="52" rx="18" fill="#e4eef9"/>
+  <!-- wheels -->
+  <rect x="146" y="352" width="64" height="64" rx="26" fill="#1c2630"/>
+  <rect x="302" y="352" width="64" height="64" rx="26" fill="#1c2630"/>
+  <!-- body -->
+  <rect x="106" y="50" width="300" height="326" rx="76" fill="#fff"/>
+  <rect x="106" y="50" width="300" height="326" rx="76" fill="none" stroke="#cfe0f2" stroke-width="6"/>
+  <!-- destination sign -->
+  <rect x="146" y="84" width="220" height="70" rx="26" fill="#0b5cad"/>
+  <rect x="190" y="108" width="132" height="22" rx="11" fill="#fff" opacity=".9"/>
+  <!-- windscreen -->
+  <rect x="146" y="176" width="220" height="102" rx="34" fill="#cfeaff"/>
+  <path d="M176 202h46" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <!-- headlights -->
+  <circle cx="170" cy="322" r="23" fill="#ffe680" stroke="#c9a400" stroke-width="5"/>
+  <circle cx="342" cy="322" r="23" fill="#ffe680" stroke="#c9a400" stroke-width="5"/>
+  <!-- smile -->
+  <path d="M226 312q30 28 60 0" fill="none" stroke="#0b5cad" stroke-width="9" stroke-linecap="round"/>
+  <!-- ticket -->
+  <g transform="rotate(-8 340 392)">
+    <path d="M250 346h172a14 14 0 0 1 14 14v8a16 16 0 0 0 0 32v8a14 14 0 0 1-14 14H250a14 14 0 0 1-14-14v-8a16 16 0 0 0 0-32v-8a14 14 0 0 1 14-14z" fill="#ffd23f" stroke="#0b5cad" stroke-width="6"/>
+    <text x="336" y="402" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="800" fill="#0b2a4a" text-anchor="middle">0 Kč</text>
+  </g>
+  <!-- line stripe -->
+  <clipPath id="c"><rect width="512" height="512" rx="96"/></clipPath>
+  <g clip-path="url(#c)">
+    <rect x="0" y="470" width="74" height="42" fill="#E4002B"/>
+    <rect x="73" y="470" width="74" height="42" fill="#0072CE"/>
+    <rect x="146" y="470" width="74" height="42" fill="#00965E"/>
+    <rect x="219" y="470" width="74" height="42" fill="#F2A900"/>
+    <rect x="292" y="470" width="74" height="42" fill="#7A3E9D"/>
+    <rect x="365" y="470" width="74" height="42" fill="#4A5560"/>
+    <rect x="438" y="470" width="74" height="42" fill="#A05A2C"/>
+  </g>
 </svg>

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
   import { get } from 'svelte/store';
-  import { hmToSec, secToHM, pragueNow } from '@rb/shared';
+  import { hmToSec, secToHM, pragueNow, addDays } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { route, navigate, lastHash } from '../lib/nav';
   import { formatRoute, type Route } from '../lib/hashRoute';
@@ -102,14 +102,11 @@
     const date = r.date ?? n.date;
     const total = (r.mode === 'now' ? n.sec : hmToSec(r.time ?? secToHM(n.sec))) + minutes * 60;
     const dayShift = Math.floor(total / 86400);
-    const sec = total - dayShift * 86400;
-    update({ mode: r.mode === 'arr' ? 'arr' : 'dep', time: secToHM(sec), date: addDays(date, dayShift) });
-  }
-  /** YYYYMMDD + n days (calendar arithmetic in UTC, so no DST surprises) */
-  function addDays(d: string, n: number): string {
-    if (!n) return d;
-    const x = new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8) + n));
-    return x.toISOString().slice(0, 10).replaceAll('-', '');
+    let nd = addDays(date, dayShift);
+    let sec = total - dayShift * 86400;
+    // never go back before the present moment
+    if (nd < n.date || (nd === n.date && sec < n.sec)) { nd = n.date; sec = n.sec; }
+    update({ mode: r.mode === 'arr' ? 'arr' : 'dep', time: secToHM(sec), date: nd });
   }
   /** trip detail was opened from this same plan: pop history instead of pushing a duplicate entry */
   function back() {

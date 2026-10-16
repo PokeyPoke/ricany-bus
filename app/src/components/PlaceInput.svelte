@@ -21,7 +21,7 @@
   const inputId = $derived(`pi-${target}`);
   const listId = $derived(`pi-list-${target}`);
   const optId = (i: number) => `pi-opt-${target}-${i}`;
-  let active = $state(-1);
+  let activeKey = $state<string | null>(null);
 
   function cancelSearch() {
     clearTimeout(timer);
@@ -45,19 +45,21 @@
     ];
     return query ? [...found, ...actions] : [...actions, ...found];
   });
-  $effect(() => { void items.length; if (active >= items.length) active = items.length - 1; });
+  const active = $derived(activeKey === null ? -1 : items.findIndex((i) => i.key === activeKey));
+  $effect(() => { if (activeKey !== null && active < 0) activeKey = null; });
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') {
       open = false;
-      active = -1;
+      activeKey = null;
       if ($pickTarget === target) pickTarget.set(null);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!open) { open = true; return; }
       if (!items.length) return;
-      const d = e.key === 'ArrowDown' ? 1 : -1;
-      active = (active + d + items.length) % items.length;
-      document.getElementById(optId(active))?.scrollIntoView({ block: 'nearest' });
+      const n = items.length;
+      const next = active < 0 ? (e.key === 'ArrowDown' ? 0 : n - 1) : (active + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+      activeKey = items[next].key;
+      document.getElementById(optId(next))?.scrollIntoView({ block: 'nearest' });
     } else if (e.key === 'Enter' && open && active >= 0 && items[active]) {
       e.preventDefault();
       items[active].run();
@@ -65,7 +67,7 @@
   }
 
   function onInput() {
-    active = -1;
+    activeKey = null;
     open = true;
     msg = '';
     cancelSearch();
@@ -88,7 +90,7 @@
     cancelSearch();
     onChange({ lat: p.lat, lon: p.lon, name: p.name });
     q = '';
-    active = -1;
+    activeKey = null;
     open = false;
     hits = [];
     msg = '';

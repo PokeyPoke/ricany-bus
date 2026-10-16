@@ -288,7 +288,7 @@
 
 <div class="map" bind:this={el}></div>
 {#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>{/if}
-<button class="locate" aria-label={$t('locate')} aria-busy={locating} onclick={locate}>{locating ? '⏳' : '📍'}</button>
+<button class="locate" aria-label={locating ? $t('locating') : $t('locate')} aria-busy={locating} onclick={locate}>{locating ? '⏳' : '📍'}</button>
 <LayersPanel />
 
 <style>

@@ -30,16 +30,16 @@
   const mins = (a: number, b: number) => Math.max(1, Math.round((b - a) / 60));
   const stopLabel = (i: number) => `${data.stops[i].name}${data.stops[i].platform ? ` (${data.stops[i].platform})` : ''}`;
 
-  let toast = $state(false);
+  let toast = $state('');
   let manualUrl = $state('');
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
   $effect(() => () => clearTimeout(toastTimer));
   async function share() {
     const r = await shareLink(location.href, `${formatHM(it.depart)} – ${formatHM(it.arrive)}`);
     if (r === 'copied') {
-      toast = true;
+      toast = $t('linkCopied');
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => (toast = false), 2500);
+      toastTimer = setTimeout(() => (toast = ''), 2500);
     } else if (r === 'manual') manualUrl = location.href;
   }
 
@@ -69,7 +69,7 @@
     <input readonly value={manualUrl} onfocus={(e) => e.currentTarget.select()} />
   </label>
 {/if}
-{#if toast}<div class="toast" role="status">{$t('linkCopied')}</div>{/if}
+<div class="toast" class:on={!!toast} role="status">{toast}</div>
 
 <ol class="legs">
   {#each it.legs as l, i (i)}
@@ -104,6 +104,7 @@
   .share { margin-left: auto; min-height: 44px; }
   .manual { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
   .manual input { width: 100%; }
+  .toast:not(.on) { opacity: 0; pointer-events: none; padding: 0; box-shadow: none; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 30; background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow); }
   .legs { list-style: none; margin: 8px 0 0; padding: 0; }
   .leg { display: grid; grid-template-columns: 76px 1fr; gap: 10px; padding: 10px 0; border-left: 4px solid var(--line); padding-left: 10px; }

@@ -26,7 +26,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}', 'data/*.json'],
         runtimeCaching: [
           { urlPattern: ({ url }) => url.pathname.includes('/data/') && url.pathname.endsWith('.json'), handler: 'StaleWhileRevalidate', options: { cacheName: 'rb-data' } },
           { urlPattern: ({ url }) => url.hostname === 'tiles.openfreemap.org', handler: 'CacheFirst', options: { cacheName: 'rb-tiles', expiration: { maxEntries: 3000, maxAgeSeconds: 7 * 86400 } } },

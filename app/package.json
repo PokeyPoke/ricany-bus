@@ -9,7 +9,8 @@
     "preview": "vite preview --port 4173 --strictPort",
     "test": "vitest run",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json --threshold error",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "og": "node scripts/og.mjs"
   },
   "dependencies": {
     "@rb/shared": "*",
