@@ -70,3 +70,11 @@ export interface DelaysResponse {
   generatedAt: number;
   trips: Record<string, TripDelay>;
 }
+
+export interface Vehicle {
+  id: string; label: string; tripId: string; routeId: FreeRouteId; startDate: string;
+  lat: number; lon: number; bearing: number | null; speed: number | null; stopSeq: number | null;
+  /** unix seconds of the position */
+  ts: number;
+}
+export interface PositionsResponse { generatedAt: number; vehicles: Vehicle[] }

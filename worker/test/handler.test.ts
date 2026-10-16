@@ -37,4 +37,30 @@ describe('handler', () => {
     expect((await h(req('/nope'))).status).toBe(404);
     expect((await h(req('/delays', 'OPTIONS'))).status).toBe(204);
   });
+  it('serves /positions', async () => {
+    const vpBuf = readFileSync(new URL('./fixture/vehicle_positions.pb', import.meta.url));
+    const h = createHandler({ fetchUpstream: async (url) => new Response(url.includes('vehicle_positions') ? vpBuf : pb), now: () => 0 });
+    const res = await h(req('/positions'));
+    expect(res.status).toBe(200);
+    expect((await res.json()).vehicles.length).toBeGreaterThan(0);
+  });
+  it('serves stale data with X-Stale for up to 120 s when upstream fails', async () => {
+    let t = 0; let fail = false;
+    const h = createHandler({ fetchUpstream: async () => (fail ? new Response('x', { status: 502 }) : new Response(pb)), now: () => t });
+    await h(req('/delays'));
+    fail = true; t = 60_000;
+    const stale = await h(req('/delays'));
+    expect(stale.status).toBe(200);
+    expect(stale.headers.get('x-stale')).toBe('1');
+    t = 130_000;
+    expect((await h(req('/delays'))).status).toBe(503);
+  });
+  it('garbage body is treated as upstream failure', async () => {
+    const h = createHandler({ fetchUpstream: async () => new Response(new Uint8Array([0x12, 0xff, 0xff, 0x03, 0x01])), now: () => 0 });
+    expect((await h(req('/delays'))).status).toBe(503);
+  });
+  it('times out a hung upstream', async () => {
+    const h = createHandler({ fetchUpstream: (_u, signal) => new Promise((_, rej) => signal.addEventListener('abort', () => rej(new Error('aborted')))), now: () => 0, timeoutMs: 20 });
+    expect((await h(req('/delays'))).status).toBe(503);
+  });
 });

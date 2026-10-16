@@ -18,7 +18,12 @@ class Reader {
   }
   uint(): number { const { lo, hi } = this.varint(); return hi * 4294967296 + lo; }
   int32(): number { return this.varint().lo | 0; }
-  private span(): [number, number] { const n = this.uint(); const s = this.pos; this.pos += n; return [s, this.pos]; }
+  float32(): number { const v = new DataView(this.buf.buffer, this.buf.byteOffset + this.pos, 4).getFloat32(0, true); this.pos += 4; return v; }
+  private span(): [number, number] {
+    const n = this.uint(); const s = this.pos; this.pos += n;
+    if (this.pos > this.end) throw new Error('truncated');
+    return [s, this.pos];
+  }
   string(): string { const [s, e] = this.span(); return new TextDecoder().decode(this.buf.subarray(s, e)); }
   sub(): Reader { const [s, e] = this.span(); return new Reader(this.buf, s, e); }
   skip(wt: number): void {
@@ -91,4 +96,49 @@ export function decodeTripUpdates(buf: Uint8Array): { timestamp: number; updates
     } else r.skip(wt);
   }
   return { timestamp, updates };
+}
+
+export interface RawVehicle {
+  trip: { tripId: string | null; routeId: string | null; startDate: string | null } | null;
+  lat: number | null; lon: number | null; bearing: number | null; speed: number | null;
+  stopSeq: number | null; ts: number | null; id: string | null; label: string | null;
+}
+function readPosition(r: Reader, v: RawVehicle) {
+  for (const [f, wt] of r.fields()) {
+    if (f === 1 && wt === 5) v.lat = r.float32();
+    else if (f === 2 && wt === 5) v.lon = r.float32();
+    else if (f === 3 && wt === 5) v.bearing = r.float32();
+    else if (f === 5 && wt === 5) v.speed = r.float32();
+    else r.skip(wt);
+  }
+}
+function readVehicleDescriptor(r: Reader, v: RawVehicle) {
+  for (const [f, wt] of r.fields()) {
+    if (f === 1 && wt === 2) v.id = r.string();
+    else if (f === 2 && wt === 2) v.label = r.string();
+    else r.skip(wt);
+  }
+}
+function readVehicle(r: Reader): RawVehicle {
+  const v: RawVehicle = { trip: null, lat: null, lon: null, bearing: null, speed: null, stopSeq: null, ts: null, id: null, label: null };
+  for (const [f, wt] of r.fields()) {
+    if (f === 1 && wt === 2) v.trip = readTrip(r.sub());
+    else if (f === 2 && wt === 2) readPosition(r.sub(), v);
+    else if (f === 3 && wt === 0) v.stopSeq = r.uint();
+    else if (f === 5 && wt === 0) v.ts = r.uint();
+    else if (f === 8 && wt === 2) readVehicleDescriptor(r.sub(), v);
+    else r.skip(wt);
+  }
+  return v;
+}
+export function decodeVehiclePositions(buf: Uint8Array): { timestamp: number; vehicles: RawVehicle[] } {
+  const r = new Reader(buf);
+  let timestamp = 0;
+  const vehicles: RawVehicle[] = [];
+  for (const [f, wt] of r.fields()) {
+    if (f === 1 && wt === 2) { const h = r.sub(); for (const [hf, hwt] of h.fields()) { if (hf === 3 && hwt === 0) timestamp = h.uint(); else h.skip(hwt); } }
+    else if (f === 2 && wt === 2) { const e = r.sub(); for (const [ef, ewt] of e.fields()) { if (ef === 4 && ewt === 2) vehicles.push(readVehicle(e.sub())); else e.skip(ewt); } }
+    else r.skip(wt);
+  }
+  return { timestamp, vehicles };
 }
