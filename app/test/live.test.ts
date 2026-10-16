@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { get, writable } from 'svelte/store';
-import { parseNextbike, createPoller } from '../src/lib/live';
+import { parseNextbike, createPoller, freshVehicles, resolveVehicleTrip } from '../src/lib/live';
+import { buildNetwork } from '../src/router/network';
+import { stops, timetable } from './fixtures/net';
 
 const place = (o: Record<string, unknown>) => ({ uid: 1, name: 'A', lat: 49.99, lng: 14.65, spot: true, maintenance: false, active_place: 1, bikes: 3, bikes_available_to_rent: 3, free_racks: 7, ...o });
 
@@ -54,4 +56,12 @@ describe('createPoller', () => {
     expect(get(ok)).toBe(false);
     r3();
   });
+});
+
+it('freshVehicles keeps vehicles and resolveVehicleTrip uses startDate', () => {
+  const v = { id: 'x', label: '1', tripId: 'n1', routeId: 'L1736', startDate: '20261018', lat: 50, lon: 14.6, bearing: 90, speed: 3, stopSeq: 1, ts: 1000 } as const;
+  expect(freshVehicles({ generatedAt: 1000, vehicles: [v] }, 1000_000 + 60_000)).toHaveLength(1);
+  expect(freshVehicles({ generatedAt: 1000, vehicles: [v] }, 1000_000 + 200_000)).toHaveLength(0);
+  const hit = resolveVehicleTrip(v, (d) => buildNetwork(stops, timetable, d));
+  expect(hit && hit.net.patterns[hit.p].trips[hit.trip]).toMatchObject({ id: 'n1', serviceDate: '20261018' });
 });

@@ -1,7 +1,8 @@
 import { writable, type Writable } from 'svelte/store';
-import { NEXTBIKE_CITY_UID, type DelaysResponse } from '@rb/shared';
+import { NEXTBIKE_CITY_UID, addDays, type DelaysResponse, type PositionsResponse, type Vehicle } from '@rb/shared';
 import { NEXTBIKE_URL, WORKER_URL } from '../config';
 import type { BikeStation } from '../router/types';
+import type { Network } from '../router/network';
 
 export const delays = writable<DelaysResponse | null>(null);
 export const delaysOk = writable(true);
@@ -64,3 +65,18 @@ export function createPoller<T>(
 
 export const useDelays = createPoller(fetchDelays, 30_000, delays, delaysOk);
 export const useBikes = createPoller(fetchBikes, 60_000, bikes, bikesOk, (at) => bikesAt.set(at));
+
+export function freshVehicles(r: PositionsResponse | null, nowMs: number, maxAgeMs = 180_000): Vehicle[] {
+  return (r?.vehicles ?? []).filter((v) => v.ts * 1000 >= nowMs - maxAgeMs);
+}
+
+export function resolveVehicleTrip(v: Vehicle, netFor: (d: string) => Network): { net: Network; p: number; trip: number } | null {
+  for (const d of [v.startDate, addDays(v.startDate, 1)]) {
+    const net = netFor(d);
+    for (let p = 0; p < net.patterns.length; p++) {
+      const trip = net.patterns[p].trips.findIndex((t) => t.id === v.tripId && t.serviceDate === v.startDate);
+      if (trip >= 0) return { net, p, trip };
+    }
+  }
+  return null;
+}
