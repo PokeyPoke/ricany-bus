@@ -7,7 +7,8 @@ const read = <T>(n: string): T => JSON.parse(readFileSync(new URL(`../public/dat
 
 export const stops = read<{ stops: Stop[] }>('stops').stops;
 export const lines = read<{ lines: Line[] }>('lines').lines;
-const services = read<{ servicesByDate: Record<string, string[]> }>('timetable').servicesByDate;
+const timetable = read<{ servicesByDate: Record<string, string[]>; patterns: { routeId: string; directionId: number; stops: number[]; seq: number[]; trips: { id: string; service: string; dep: number[] }[] }[] }>('timetable');
+const services = timetable.servicesByDate;
 
 const isWeekday = (d: string) => { const w = new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))).getUTCDay(); return w >= 1 && w <= 5; };
 export const DATE = Object.keys(services).sort().find((d) => isWeekday(d) && services[d].length)!;
@@ -21,6 +22,12 @@ function pragueUtc(date: string, hh: number, mm: number): Date {
   }
   throw new Error('cannot resolve Prague offset');
 }
+
+export const CLOCK = pragueUtc(DATE, 7, 30);
+const pat3 = timetable.patterns.find((p) => p.routeId === 'L1733' && p.directionId === 0 && p.trips.some((t) => services[DATE].includes(t.service) && t.dep[0] >= 7.5 * 3600))!;
+export const BUS_TRIP = pat3.trips.find((t) => services[DATE].includes(t.service) && t.dep[0] >= 7.5 * 3600)!.id;
+const busStop = stops[pat3.stops[0]];
+export const BUS = { id: 'bus-1', label: '1', tripId: BUS_TRIP, routeId: 'L1733', startDate: DATE, lat: busStop.lat, lon: busStop.lon, bearing: 45, speed: 0, stopSeq: pat3.seq[0], ts: Math.floor(CLOCK.getTime() / 1000) };
 
 const first = stops[lines[0].directions[0].stops[0]];
 export const NEXTBIKE = { countries: [{ cities: [{ uid: 736, places: [
@@ -37,9 +44,12 @@ export const test = base.extend<{ mocks: void; delaysStatus: number }>({
     await page.route('https://api.nextbike.net/**', (r) => r.fulfill({ json: NEXTBIKE }));
     await page.route('https://maps2.nextbike.net/**', (r) => r.fulfill({ json: NEXTBIKE }));
     await page.route('https://photon.komoot.io/**', (r) => r.fulfill({ json: PHOTON }));
-    await page.route('https://ricany-bus-live.pokeypoke.workers.dev/**', (r) =>
-      delaysStatus === 200 ? r.fulfill({ json: { generatedAt: 1, trips: {} } }) : r.fulfill({ status: delaysStatus, json: { error: 'down' } }));
-    await page.clock.setFixedTime(pragueUtc(DATE, 7, 30));
+    await page.route('https://ricany-bus-live.pokeypoke.workers.dev/**', (r) => {
+      if (delaysStatus !== 200) return r.fulfill({ status: delaysStatus, json: { error: 'down' } });
+      if (new URL(r.request().url()).pathname.endsWith('/positions')) return r.fulfill({ json: { generatedAt: BUS.ts, vehicles: [BUS] } });
+      return r.fulfill({ json: { generatedAt: 1, trips: {} } });
+    });
+    await page.clock.setFixedTime(CLOCK);
     await use();
   }, { auto: true }],
 });

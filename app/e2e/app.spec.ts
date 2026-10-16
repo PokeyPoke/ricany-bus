@@ -1,4 +1,4 @@
-import { test, expect, stops, lines, place } from './fixtures';
+import { test, expect, stops, lines, place, BUS } from './fixtures';
 
 const line1 = lines.find((l) => l.number === '1')!;
 const a = stops[line1.directions[0].stops[0]];
