@@ -372,7 +372,7 @@ jobs:
       - name: Deploy (skipped when CLOUDFLARE_API_TOKEN is not configured)
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: [redacted-account-id]
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then echo "::notice::CLOUDFLARE_API_TOKEN not set — skipping deploy (deploy manually: cd worker && npx --yes wrangler@4 deploy)"; exit 0; fi
           cd worker && npx --yes wrangler@4 deploy

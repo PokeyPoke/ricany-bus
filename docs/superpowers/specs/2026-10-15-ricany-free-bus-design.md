@@ -50,7 +50,7 @@ GitHub repo PokeyPoke/ricany-bus
 
 - No server of our own. Everything except the Worker is static.
 - Hosting: GitHub Pages (site), Cloudflare Workers free tier (proxy), GitHub Actions (CI, data
-  refresh, deploys). Cloudflare account: [redacted-email]'s account; Worker deploy uses a
+  refresh, deploys). Cloudflare account: the owner's account; Worker deploy uses a
   Cloudflare API token stored as a GitHub Actions secret.
 
 ### 3.1 Data pipeline (`pipeline/`)

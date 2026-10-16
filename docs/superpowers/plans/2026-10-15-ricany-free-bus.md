@@ -15,7 +15,7 @@
 The owner has pre-authorized, for this project only: creating the **public** repo `PokeyPoke/ricany-bus`, pushing directly to `main`, enabling GitHub Pages, and deploying the Cloudflare Worker from this Mac with the existing wrangler OAuth login. Do not ask for confirmation for those. Do not do anything else outward-facing (no other repos, no other Cloudflare resources, no emails, no paid services).
 
 - `gh` CLI is logged in as **PokeyPoke** (scopes `repo`, `workflow`).
-- Wrangler is logged in (Cloudflare account id `[redacted-account-id]`). The `workers.dev` subdomain **`pokeypoke`** is already registered, so the Worker URL will be `https://ricany-bus-live.pokeypoke.workers.dev`.
+- Wrangler is logged in (see `npx --yes wrangler@4 whoami` for the account). The `workers.dev` subdomain **`pokeypoke`** is already registered, so the Worker URL will be `https://ricany-bus-live.pokeypoke.workers.dev`.
 - Always invoke wrangler as `npx --yes wrangler@4 …` (it is not installed globally).
 - Site URL: `https://pokeypoke.github.io/ricany-bus/` (Vite `base: '/ricany-bus/'`).
 - If a tool fails mysteriously, check `~/code/papercuts.md` first; when you lose time to something, append a line `date • symptom • fix • ricany-bus` to it.
