@@ -566,6 +566,31 @@ export const lineSelection = writable<{ number: string; directionId: number } | 
 
 ---
 
+### Task 6b: Clean map, curated place icons, layers panel (owner request 2026-10-16)
+
+**Files:** Create `app/src/map/basemap.ts`, `app/test/basemap.test.ts`, `app/src/components/LayersPanel.svelte`. Modify `app/src/map/MapView.svelte`, `app/src/lib/ui.ts`, `app/src/App.svelte` (remove the 🚲 top-bar toggle; add map Layers button), `app/src/lib/i18n.ts`, Stage A e2e if it referenced the 🚲 toggle.
+
+**Interfaces:**
+- `ui.ts`: `bikesLayerOn` default **false** (persisted via storage key `rb.layer.bikes`), new `poiLayerOn` (default true, `rb.layer.poi`), `buildingsLayerOn` (default true, `rb.layer.buildings`).
+- `basemap.ts`:
+  ```ts
+  export const HIDE_LAYERS: string[]      // building-3d, road_one_way_arrow, road_one_way_arrow_opposite, highway-shield-non-us, highway-shield-us-interstate, road_shield_us, boundary_3, boundary_2, boundary_disputed, aeroway_fill, aeroway_runway, aeroway_taxiway, natural_earth, poi_r1, poi_r7, poi_r20
+  export const POI_ESSENTIAL: string[]     // OpenMapTiles poi `class` values shown from z14: grocery, shop (subclass supermarket|convenience only), pharmacy, post, school, college, hospital, doctors, town_hall, railway
+  export const POI_DETAIL: string[]        // shown from z16: cafe, restaurant, fast_food, library, place_of_worship, bakery
+  export function poiFilter(): unknown[]   // maplibre filter expression for the curated set (class + subclass rules)
+  export function declutter(map): void     // hide HIDE_LAYERS if present; building: fill-opacity 0.25 + outline; landuse_residential/park/landcover_* fill-opacity ×0.5; highway-name-minor minzoom 16; add 'places' symbol layer (source 'openmaptiles', source-layer 'poi', filter poiFilter(), icon from the style sprite by class with fallback, text = name at z16+, icon-size 0.9, symbol-sort-key by rank) below our 'lines' layer
+  ```
+  Must be idempotent (called on every style.load) and tolerate missing layers (fallback style).
+- Layers panel: a "Vrstvy" map button (icon 🗂, aria-label $t('layers')) opens a small popover with three switches (role="switch", aria-checked): $t('layerBikes') "Stanice Nextbike", $t('layerPlaces') "Obchody a služby", $t('layerBuildings') "Budovy". Toggling sets visibility of bikes layers, 'places', 'building'.
+- Tapping a place icon → small popup (maplibre Popup or a sheet-free floating card) with name, category label, and a button $t('goHere') "Jet sem" → `navigate({ name: 'plan', mode: 'now', to: { lat, lon, name } })`. Click priority: buses > bikes > line-stops > groups-hit > places > lines.
+
+- [ ] **Step 1: Tests** (`basemap.test.ts`): HIDE_LAYERS contains the listed ids; poiFilter matches a fake feature set `{class:'grocery'}`, `{class:'shop',subclass:'supermarket'}`, `{class:'pharmacy'}` and rejects `{class:'shop',subclass:'clothes'}`, `{class:'bench'}` (evaluate with a tiny expression interpreter in the test, or structure poiFilter from a pure `isCuratedPoi(props, zoom)` that is also used to build the expression — test the pure function); storage defaults (bikes false).
+- [ ] **Step 2: Implement**; verify layer/sprite icon names against the live style (`curl -s https://tiles.openfreemap.org/styles/liberty` → sprite URL → sprite JSON) and record the class→icon mapping used.
+- [ ] **Step 3:** typecheck/test/build/e2e (update any Stage A e2e that clicked the removed 🚲 top-bar button; the `button.bike` stop-board row is unaffected). Playwright scratch screenshots at z14 and z16 near Masarykovo nám. (real network): fewer, clearer icons; buildings faint; no Nextbike dots by default; toggle on → dots appear. Read them.
+- [ ] **Step 4:** Commit + push.
+
+---
+
 ### Task 7: Line view ↔ map, "Kam pojedete?" and direct-ride sheets
 
 **Files:** Modify `app/src/sheets/LineView.svelte`, `app/src/sheets/StopBoard.svelte`, `app/src/lib/hashRoute.ts` (+test), `app/src/App.svelte`, `app/src/lib/i18n.ts`. Create `app/src/sheets/FromSheet.svelte`, `app/src/sheets/RideSheet.svelte`.
