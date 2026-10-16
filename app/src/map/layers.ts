@@ -1,7 +1,7 @@
 import type * as maplibregl from 'maplibre-gl';
 import type { AppData } from '../lib/data';
 import { linesGeoJson, groupsGeoJson, type FC } from './geojson';
-import { drawRing } from './rings';
+import { drawRing, ringKey } from './rings';
 
 const empty: FC = { type: 'FeatureCollection', features: [] };
 const FONT = ['Noto Sans Regular'];
@@ -12,7 +12,7 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
   map.addSource('groups', { type: 'geojson', data: groupsGeoJson(data.groups) as never, promoteId: 'gi', generateId: false } as never);
   map.addSource('line-stops', { type: 'geojson', data: empty as never, promoteId: 'gi', generateId: false } as never);
   for (const g of data.groups) {
-    const key = 'ring-' + g.lines.join('-');
+    const key = ringKey(g.lines);
     if (!map.hasImage(key)) map.addImage(key, drawRing(g.lines), { pixelRatio: 2 });
   }
   map.addSource('bikes', { type: 'geojson', data: empty as never });

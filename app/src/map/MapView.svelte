@@ -48,19 +48,27 @@
     if (!map) return;
     if (get(pickTarget)) { mapPick.set({ lat: e.lngLat.lat, lon: e.lngLat.lng }); return; }
     const near = (r: number): [maplibregl.PointLike, maplibregl.PointLike] => [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
-    const q = (id: string, box: maplibregl.PointLike | [maplibregl.PointLike, maplibregl.PointLike]) => (map!.getLayer(id) ? map!.queryRenderedFeatures(box, { layers: [id] })[0] : undefined);
+    const q = (id: string, box: maplibregl.PointLike | [maplibregl.PointLike, maplibregl.PointLike]) => (map!.getLayer(id) ? map!.queryRenderedFeatures(box, { layers: [id] }) : []);
+    const nearest = (fs: maplibregl.MapGeoJSONFeature[]) => {
+      const d = (f: maplibregl.MapGeoJSONFeature) => {
+        const c = (f.geometry as unknown as { coordinates: [number, number] }).coordinates;
+        const pt = map!.project(c);
+        return (pt.x - e.point.x) ** 2 + (pt.y - e.point.y) ** 2;
+      };
+      return fs.reduce<maplibregl.MapGeoJSONFeature | undefined>((best, f) => (!best || d(f) < d(best) ? f : best), undefined);
+    };
     const p = (f: maplibregl.MapGeoJSONFeature) => f.properties as Record<string, string | number>;
-    const bike = q('bikes', near(10));
+    const bike = q('bikes', near(10))[0];
     if (bike) { navigate({ name: 'bike', uid: Number(p(bike).uid) }); return; }
-    const ls = q('line-stops', e.point);
+    const ls = nearest(q('line-stops', near(22)));
     if (ls && map.getLayoutProperty('line-stops', 'visibility') === 'visible') {
       const d = p(ls);
       navigate({ name: 'line', number: String(d.number), dir: Number(d.directionId), stopId: data.stops[Number(d.stopIdx)].id }, true);
       return;
     }
-    const g = q('groups-hit', e.point);
+    const g = nearest(q('groups-hit', near(22)));
     if (g) { navigate({ name: 'stop', stopId: data.groups[Number(p(g).gi)].id }); return; }
-    const l = q('lines', near(10));
+    const l = q('lines', near(10))[0];
     if (l) navigate({ name: 'line', number: String(p(l).number), dir: Number(p(l).directionId) || 0 });
   }
 
@@ -87,10 +95,11 @@
     const timer = setTimeout(fallBack, 8000);
     m.on('click', onClick);
     const hit = ['groups-hit', 'line-stops'];
+    const canHover = matchMedia('(hover: hover)').matches;
     m.on('mousemove', (e) => {
       const cur = (id: string[]) => m.queryRenderedFeatures(e.point, { layers: id.filter((i) => m.getLayer(i)) });
       const h = cur(hit).filter((f) => f.layer.id !== 'line-stops' || m.getLayoutProperty('line-stops', 'visibility') === 'visible')[0];
-      hoverGroup.set(h ? Number((h.properties as { gi: number }).gi) : null);
+      if (canHover) hoverGroup.set(h ? Number((h.properties as { gi: number }).gi) : null);
       m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['bikes', 'lines']).length ? 'pointer' : '';
     });
     m.on('mouseout', () => hoverGroup.set(null));

@@ -1,4 +1,5 @@
 import { LINE_STYLE, type LineRec, type StopRec, type StopGroup } from '@rb/shared';
+import { ringKey } from './rings';
 import type { AppData } from '../lib/data';
 import type { BikeStation, Itinerary } from '../router/types';
 
@@ -17,7 +18,7 @@ export const linesGeoJson = (lines: LineRec[]) =>
   fc(lines.flatMap((l) => l.directions.map((d) => lineStr(d.shape, { routeId: l.routeId, number: l.number, color: l.color, directionId: d.directionId }))));
 
 export const groupsGeoJson = (groups: StopGroup[]) =>
-  fc(groups.map((g, gi) => point(g.lon, g.lat, { gi, id: g.id, name: g.name, ring: 'ring-' + g.lines.join('-') })));
+  fc(groups.map((g, gi) => point(g.lon, g.lat, { gi, id: g.id, name: g.name, ring: ringKey(g.lines) })));
 
 /** Stops of one line direction, one point per stop group in travel order, numbered 1..n. */
 export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: LineRec, directionId: number): FC {
