@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { AppData } from '../lib/data';
   import { sampleDate, stopTimetable, dayTypeOf, type DayType } from '../router/timetable';
-  import { now, focusPoints, highlightLine, tripOverlay } from '../lib/ui';
+  import { now, focusPoints, highlightLine, tripOverlay, hoverGroup, lineSelection } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { t } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
@@ -34,8 +34,32 @@
     return () => highlightLine.set(null);
   });
 
+  // Line selection for the numbered stops on the map: keyed on line + direction identity only.
+  const selNumber = $derived(line?.number ?? null);
+  const selDir = $derived(direction?.directionId ?? null);
+  $effect(() => {
+    if (selNumber == null || selDir == null) return;
+    lineSelection.set({ number: selNumber, directionId: selDir });
+    return () => lineSelection.set(null);
+  });
+
+  // map -> list: bring the hovered stop's row into view
+  let listEl: HTMLOListElement | undefined = $state();
+  $effect(() => {
+    const g = $hoverGroup;
+    if (g == null || !listEl) return;
+    listEl.querySelector<HTMLElement>(`li[data-gi="${g}"]`)?.scrollIntoView({ block: 'nearest' });
+  });
+
   const setDir = (d: number) => navigate({ name: 'line', number, dir: d }, true);
-  const setStop = (i: number) => navigate({ name: 'line', number, dir: direction?.directionId ?? 0, stopId: data.stops[i].id }, true);
+  const setStop = (i: number) => {
+    navigate({ name: 'line', number, dir: direction?.directionId ?? 0, stopId: data.stops[i].id }, true);
+    focusPoints.set([[data.stops[i].lon, data.stops[i].lat]]);
+  };
+  const whereTo = () => {
+    if (!line || !direction || selIdx < 0) return;
+    navigate({ name: 'from', groupId: data.groups[data.stops[selIdx].group].id, line: line.number, dir: direction.directionId });
+  };
   const DAYS: DayType[] = ['weekday', 'saturday', 'sunday'];
 </script>
 
@@ -54,6 +78,7 @@
   {/if}
 
   <h2>{data.stops[selIdx]?.name}</h2>
+  <button class="primary where" onclick={whereTo}>{$t('whereTo')}</button>
   <div class="seg" role="group">
     {#each DAYS as d (d)}<button aria-pressed={dayType === d} onclick={() => (dayType = d)}>{$t(d)}</button>{/each}
   </div>
@@ -67,10 +92,13 @@
     <p class="muted">{$t('noService')}</p>
   {/if}
 
-  <h2>🚏</h2>
-  <ol class="stops">
+  <h2>{$t('stops')}</h2>
+  <ol class="stops" bind:this={listEl}>
     {#each direction.stops as i (i)}
-      <li><button class:sel={i === selIdx} onclick={() => setStop(i)}>{data.stops[i].name}{#if data.stops[i].platform}<small class="muted"> · {data.stops[i].platform}</small>{/if}</button></li>
+      <li data-gi={data.stops[i].group}>
+        <button class:sel={i === selIdx} class:hover={$hoverGroup === data.stops[i].group} aria-current={i === selIdx ? 'true' : undefined}
+          onmouseenter={() => hoverGroup.set(data.stops[i].group)} onmouseleave={() => hoverGroup.set(null)} onclick={() => setStop(i)}>{data.stops[i].name}{#if data.stops[i].platform}<small class="muted"> · {data.stops[i].platform}</small>{/if}</button>
+      </li>
     {/each}
   </ol>
 {/if}
@@ -84,5 +112,7 @@
   .m { white-space: pre-wrap; }
   .stops { margin: 0; padding-left: 22px; }
   .stops button { min-height: 40px; text-align: left; }
+  .where { margin-top: 6px; }
+  .stops button.hover { background: var(--chip); border-radius: 8px; }
   .stops button.sel { font-weight: 800; color: var(--accent); }
 </style>

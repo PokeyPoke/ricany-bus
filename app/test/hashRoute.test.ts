@@ -12,6 +12,9 @@ describe('hashRoute', () => {
     rt({ name: 'line', number: '91', dir: 1, stopId: 'U6790Z1' });
     rt({ name: 'bike', uid: 27581951 });
     rt({ name: 'bus', tripId: 'L1731_12 3' });
+    rt({ name: 'from', groupId: 'U9364Z11', line: '3', dir: 1 });
+    rt({ name: 'from', groupId: 'U9364Z11', line: undefined, dir: undefined });
+    rt({ name: 'ride', line: '91', dir: 0, from: 'U1Z1', to: 'U2Z2' });
   });
   it('falls back to home or defaults on garbage', () => {
     expect(parseHash('')).toEqual({ name: 'home' });
@@ -20,6 +23,12 @@ describe('hashRoute', () => {
     expect(parseHash('#/bike/abc')).toEqual({ name: 'home' });
     expect(parseHash('#/plan?mode=xyz&from=a,b,c')).toMatchObject({ name: 'plan', mode: 'now', from: undefined });
     expect(parseHash('#/line/3')).toEqual({ name: 'line', number: '3', dir: 0, stopId: undefined });
+  });
+  it('garbage from/ride fall back', () => {
+    expect(parseHash('#/from/')).toEqual({ name: 'home' });
+    expect(parseHash('#/ride')).toEqual({ name: 'home' });
+    expect(parseHash('#/ride?line=3&dir=0&from=a')).toEqual({ name: 'home' });
+    expect(parseHash('#/from/U1?line=3')).toEqual({ name: 'from', groupId: 'U1', line: '3', dir: 0 });
   });
   it('does not throw on malformed percent-encoding', () => {
     expect(parseHash('#/stop/%E0%A4%A')).toEqual({ name: 'home' });

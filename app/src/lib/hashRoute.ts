@@ -8,7 +8,9 @@ export type Route =
   | { name: 'stop'; stopId: string }
   | { name: 'line'; number: string; dir: number; stopId?: string }
   | { name: 'bike'; uid: number }
-  | { name: 'bus'; tripId: string };
+  | { name: 'bus'; tripId: string }
+  | { name: 'from'; groupId: string; line?: string; dir?: number }
+  | { name: 'ride'; line: string; dir: number; from: string; to: string };
 
 const encPlace = (p: PlaceRef) => `${+p.lat.toFixed(6)},${+p.lon.toFixed(6)},${p.name}`;
 function decPlace(s: string | null): PlaceRef | undefined {
@@ -44,6 +46,15 @@ export function parseHash(hash: string): Route {
     }
     case 'bus':
       return parts[1] ? { name: 'bus', tripId: parts[1] } : { name: 'home' };
+    case 'from': {
+      if (!parts[1]) return { name: 'home' };
+      const line = opt(q.get('line'));
+      return { name: 'from', groupId: parts[1], line, dir: line ? Number(q.get('dir')) || 0 : undefined };
+    }
+    case 'ride': {
+      const line = q.get('line'), from = q.get('from'), to = q.get('to');
+      return line && from && to ? { name: 'ride', line, dir: Number(q.get('dir')) || 0, from, to } : { name: 'home' };
+    }
     default:
       return { name: 'home' };
   }
@@ -74,5 +85,13 @@ export function formatRoute(r: Route): string {
       return `#/bike/${r.uid}`;
     case 'bus':
       return `#/bus/${encodeURIComponent(r.tripId)}`;
+    case 'from': {
+      const q = new URLSearchParams();
+      if (r.line) { q.set('line', r.line); q.set('dir', String(r.dir ?? 0)); }
+      const qs = q.toString();
+      return `#/from/${encodeURIComponent(r.groupId)}${qs ? `?${qs}` : ''}`;
+    }
+    case 'ride':
+      return `#/ride?${new URLSearchParams({ line: r.line, dir: String(r.dir), from: r.from, to: r.to })}`;
   }
 }

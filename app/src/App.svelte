@@ -6,6 +6,8 @@
   import StopBoard from './sheets/StopBoard.svelte';
   import BikeStation from './sheets/BikeStation.svelte';
   import BusSheet from './sheets/BusSheet.svelte';
+  import FromSheet from './sheets/FromSheet.svelte';
+  import RideSheet from './sheets/RideSheet.svelte';
   import LineView from './sheets/LineView.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
@@ -48,6 +50,10 @@
           <StopBoard {data} stopId={$route.stopId} />
         {:else if $route.name === 'line'}
           <LineView {data} number={$route.number} dir={$route.dir} stopId={$route.stopId} />
+        {:else if $route.name === 'from'}
+          <FromSheet {data} groupId={$route.groupId} line={$route.line} dir={$route.dir} />
+        {:else if $route.name === 'ride'}
+          <RideSheet {data} line={$route.line} dir={$route.dir} from={$route.from} to={$route.to} />
         {:else if $route.name === 'bike'}
           <BikeStation {data} uid={$route.uid} />
         {:else if $route.name === 'bus'}

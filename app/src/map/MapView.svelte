@@ -4,7 +4,7 @@
   import * as maplibregl from 'maplibre-gl';
   import 'maplibre-gl/dist/maplibre-gl.css';
   import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
-  import { RIC_CENTER, type Vehicle } from '@rb/shared';
+  import { RIC_CENTER, LINE_STYLE, type Vehicle } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
   import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles } from '../lib/live';
@@ -103,6 +103,14 @@
     const offs = spreadOffsets(proj.map(({ v, pt }) => ({ id: v.tripId, x: pt.x, y: pt.y })), 46, 40);
     busCentres = proj.map(({ v, pt }) => { const o = offs[v.tripId] ?? [0, 0]; return { tripId: v.tripId, x: pt.x + o[0], y: pt.y + o[1] }; });
     setData('buses', busesGeoJson(vehicles, offs, m.getBearing()));
+    setData('buses-pulse', {
+      type: 'FeatureCollection',
+      features: proj.map(({ v, pt }) => {
+        const o = offs[v.tripId] ?? [0, 0];
+        const at = o[0] || o[1] ? m.unproject([pt.x + o[0], pt.y + o[1]]) : null;
+        return { type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: (at ? [at.lng, at.lat] : [v.lon, v.lat]) as [number, number] }, properties: { tripId: v.tripId, color: LINE_STYLE[v.routeId].color } };
+      }),
+    });
     setData('buses-leader', {
       type: 'FeatureCollection',
       features: proj.filter(({ v }) => { const o = offs[v.tripId]; return o && (o[0] || o[1]); }).map(({ v, pt }) => {
@@ -158,11 +166,12 @@
     // style.load fires for the first style and again after the fallback swap; setStyle drops our sources/layers/images
     m.on('style.load', () => {
       styled = true;
-      try { addLayers(m, data); declutter(m); } catch (err) { if (!warned) { warned = true; console.warn('map setup failed', err); } }
+      const warn = (what: string, err: unknown) => { if (!warned) { warned = true; console.warn(`${what} failed`, err); } };
+      try { addLayers(m, data); } catch (err) { warn('map layer setup', err); }
+      try { declutter(m); } catch (err) { warn('basemap declutter', err); }
       gen++;
     });
     m.on('moveend', () => refreshBuses());
-    m.on('zoomend', () => refreshBuses());
     m.on('error', fallBack);
     const timer = setTimeout(fallBack, 8000);
     m.on('click', onClick);
@@ -182,8 +191,9 @@
   $effect(() => {
     const gi = $hoverGroup;
     if (!gen || !map) return;
-    map.setFilter('groups-hover', ['==', ['get', 'gi'], gi ?? -1] as maplibregl.FilterSpecification);
+    if (map.getLayer('groups-hover')) map.setFilter('groups-hover', ['==', ['get', 'gi'], gi ?? -1] as maplibregl.FilterSpecification);
     for (const src of ['groups', 'line-stops']) {
+      if (!map.getSource(src)) continue;
       if (hovered != null) map.setFeatureState({ source: src, id: hovered }, { hover: false });
       if (gi != null) map.setFeatureState({ source: src, id: gi }, { hover: true });
     }
@@ -194,9 +204,9 @@
     if (!gen || !map) return;
     const line = sel && data.lines.find((l) => l.number === sel.number);
     setData('line-stops', line && sel ? lineStopsGeoJson(data.groups, data.stops, line, sel.directionId) : { type: 'FeatureCollection', features: [] });
-    for (const id of ['line-stops', 'line-stops-num']) map.setLayoutProperty(id, 'visibility', line ? 'visible' : 'none');
-    for (const id of ['groups', 'groups-hover']) map.setPaintProperty(id, 'icon-opacity', line ? 0.4 : 1);
-    map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
+    for (const id of ['line-stops', 'line-stops-num']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', line ? 'visible' : 'none');
+    for (const id of ['groups', 'groups-hover']) if (map.getLayer(id)) map.setPaintProperty(id, 'icon-opacity', line ? 0.4 : 1);
+    if (map.getLayer('groups-label')) map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
   });
   $effect(() => usePositions());
   $effect(() => {
@@ -208,7 +218,7 @@
   $effect(() => {
     if (!gen || !map) return;
     setData('bikes', bikesGeoJson($bikes ?? []));
-    for (const id of ['bikes', 'bikes-count']) map.setLayoutProperty(id, 'visibility', $bikesLayerOn ? 'visible' : 'none');
+    for (const id of ['bikes', 'bikes-count']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', $bikesLayerOn ? 'visible' : 'none');
   });
   $effect(() => {
     if (!gen || !map) return;
@@ -239,16 +249,15 @@
     if (!gen || !map) return;
     // stale bike data: fade the markers
     const o = $bikesOk ? 1 : 0.35;
-    map.setPaintProperty('bikes', 'circle-opacity', o);
-    map.setPaintProperty('bikes', 'circle-stroke-opacity', o);
-    map.setPaintProperty('bikes-count', 'text-opacity', o);
+    if (map.getLayer('bikes')) { map.setPaintProperty('bikes', 'circle-opacity', o); map.setPaintProperty('bikes', 'circle-stroke-opacity', o); }
+    if (map.getLayer('bikes-count')) map.setPaintProperty('bikes-count', 'text-opacity', o);
   });
   $effect(() => {
     if (!gen || !map) return;
-    map.setFilter('lines-hl', ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
+    if (map.getLayer('lines-hl')) map.setFilter('lines-hl', ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
     const dim = !!($highlightLine || $tripOverlay);
-    map.setPaintProperty('lines', 'line-opacity', dim ? 0.3 : 0.85);
-    map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.3 : 0.9);
+    if (map.getLayer('lines')) map.setPaintProperty('lines', 'line-opacity', dim ? 0.3 : 0.85);
+    if (map.getLayer('lines-casing')) map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.3 : 0.9);
   });
   $effect(() => {
     if (!gen || !map) return;
@@ -265,7 +274,11 @@
     const b = bbox($focusPoints);
     if (!b) return;
     if ($focusPoints.length === 1) map.easeTo({ center: $focusPoints[0], zoom: Math.max(map.getZoom(), 15), padding: padding() });
-    else map.fitBounds(b, { padding: padding(), maxZoom: 16, duration: 600 });
+    else {
+      // easeTo({ padding }) leaves a persistent camera padding that fitBounds would add its own on top of
+      map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+      map.fitBounds(b, { padding: padding(), maxZoom: 16, duration: 600 });
+    }
   });
 </script>
 

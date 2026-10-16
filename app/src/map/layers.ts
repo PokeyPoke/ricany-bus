@@ -57,6 +57,8 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
   // live buses: above everything
   map.addSource('buses', { type: 'geojson', data: empty as never });
   map.addSource('buses-leader', { type: 'geojson', data: empty as never });
+  // pulse ring centres: the true positions displaced by the same pixel offset as the fanned-out icons
+  map.addSource('buses-pulse', { type: 'geojson', data: empty as never });
   for (const r of LINE_ORDER) {
     if (!map.hasImage(`bus-${r}`)) map.addImage(`bus-${r}`, drawBusIcon(r), { pixelRatio: 2 });
     if (!map.hasImage(`bus-arrow-${r}`)) map.addImage(`bus-arrow-${r}`, drawArrow(LINE_STYLE[r].color), { pixelRatio: 2 });
@@ -64,7 +66,7 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
   // thin leader from the true position to a fanned-out icon, with a dot marking the true position
   map.addLayer({ id: 'buses-leader', type: 'line', source: 'buses-leader', layout: { 'line-cap': 'round' }, paint: { 'line-color': '#1d2a3a', 'line-width': 2, 'line-opacity': 0.9 } });
   map.addLayer({ id: 'buses-anchor', type: 'circle', source: 'buses', filter: ['>', ['get', 'disp'], 0], paint: { 'circle-radius': 4, 'circle-color': ['get', 'color'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } });
-  map.addLayer({ id: 'buses-pulse', type: 'circle', source: 'buses', filter: ['in', ['get', 'tripId'], ['literal', []]], paint: { 'circle-radius': 20, 'circle-color': ['get', 'color'], 'circle-opacity': 0.5, 'circle-pitch-alignment': 'map' } });
+  map.addLayer({ id: 'buses-pulse', type: 'circle', source: 'buses-pulse', filter: ['in', ['get', 'tripId'], ['literal', []]], paint: { 'circle-radius': 20, 'circle-color': ['get', 'color'], 'circle-opacity': 0.5, 'circle-pitch-alignment': 'map' } });
   map.addLayer({ id: 'buses-arrow', type: 'symbol', source: 'buses', filter: ['>=', ['get', 'bearing'], 0], layout: {
     'icon-image': ['concat', 'bus-arrow-', ['get', 'routeId']], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': ['get', 'aoff'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
   } });

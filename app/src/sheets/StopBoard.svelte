@@ -76,7 +76,7 @@
       <button class="line" aria-label={`${$t('lines')} ${l}`} onclick={() => navigate({ name: 'line', number: data.lines.find((x) => x.routeId === l)?.number ?? '', dir: 0, stopId: stop.id })}><LineBadge routeId={l} /></button>
     {/each}
     <span class="spacer"></span>
-    <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', from: here() })}>{$t('planFromHere')}</button>
+    <button class="secondary" onclick={() => navigate({ name: 'from', groupId: data.groups[stop.group].id })}>{$t('planFromHere')}</button>
     <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', to: here() })}>{$t('planToHere')}</button>
   </div>
 
