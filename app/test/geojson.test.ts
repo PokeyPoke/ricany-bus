@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { LineRec } from '@rb/shared';
-import { linesGeoJson, stopsGeoJson, bikesGeoJson, tripGeoJson, bbox } from '../src/map/geojson';
+import { linesGeoJson, groupsGeoJson, lineStopsGeoJson, bikesGeoJson, tripGeoJson, bbox } from '../src/map/geojson';
 import type { AppData } from '../src/lib/data';
 import type { Itinerary } from '../src/router/types';
 import { stops, timetable, H } from './fixtures/net';
@@ -9,10 +9,23 @@ const line: LineRec = { routeId: 'L1731', number: '1', color: '#E4002B', text: '
 const data: AppData = { stops, groups: [], lines: [line], timetable, meta: { feedStart: '', feedEnd: '', generatedAt: '', tripCount: 0 } };
 
 describe('geojson', () => {
+  const groups = [
+    { id: 'A', name: 'Alpha', lat: 50, lon: 14, platforms: [0, 1], lines: ['L1731', 'L1733'] as never },
+    { id: 'B', name: 'Beta', lat: 50.1, lon: 14.1, platforms: [2], lines: ['L1731'] as never },
+  ];
+  const st = [{ group: 0 }, { group: 0 }, { group: 1 }] as never;
+  it('groups and numbered line stops', () => {
+    const g = groupsGeoJson(groups);
+    expect(g.features[1].properties).toEqual({ gi: 1, id: 'B', name: 'Beta', ring: 'ring-L1731' });
+    expect(g.features[0].properties.ring).toBe('ring-L1731-L1733');
+    const l = { ...line, directions: [{ directionId: 0, headsign: 'x', stops: [0, 1, 2, 0], shape: [] }] };
+    const f = lineStopsGeoJson(groups, st, l, 0).features;
+    expect(f.map((x) => x.properties.n)).toEqual([1, 2]);
+    expect(f[0].properties).toEqual({ gi: 0, n: 1, color: '#E4002B', text: '#FFFFFF', stopIdx: 0, number: '1', directionId: 0 });
+    expect(lineStopsGeoJson(groups, st, l, 5).features).toEqual([]);
+  });
   it('lines, stops and bikes', () => {
     expect(linesGeoJson([line]).features[0]).toEqual({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[14.65, 49.99], [14.65, 50.018]] }, properties: { routeId: 'L1731', number: '1', color: '#E4002B', directionId: 0 } });
-    expect(stopsGeoJson(stops).features.length).toBe(6);
-    expect(stopsGeoJson(stops).features[0].properties).toEqual({ id: 'S0', name: 'S0', platform: 'A' });
     expect(bikesGeoJson([{ uid: 9, name: 'B', lat: 1, lon: 2, bikes: 3, freeRacks: 1 }]).features[0]).toEqual({ type: 'Feature', geometry: { type: 'Point', coordinates: [2, 1] }, properties: { uid: 9, name: 'B', bikes: 3 } });
   });
   it('trip overlay draws buses through their stops and walks as straight lines', () => {

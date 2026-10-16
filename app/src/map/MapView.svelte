@@ -8,12 +8,12 @@
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
   import { bikes, bikesOk, useBikes } from '../lib/live';
-  import { bikesLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers } from '../lib/ui';
+  import { bikesLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection } from '../lib/ui';
   import { navigate } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
   import { addLayers } from './layers';
-  import { bikesGeoJson, tripGeoJson, bbox, type FC } from './geojson';
+  import { bikesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
 
   // maplibre 6 locates its worker via import.meta.url, which breaks under Vite's dep pre-bundling; point it at the emitted asset.
   maplibregl.setWorkerUrl(workerUrl);
@@ -21,7 +21,10 @@
   let { data }: { data: AppData } = $props();
   let el: HTMLDivElement;
   let map: maplibregl.Map | null = null;
-  let ready = $state(false);
+  /** bumped every time our layers are (re)added, so effects re-apply their state after a style swap */
+  let gen = $state(0);
+  let fellBack = $state(false);
+  const FALLBACK_STYLE = { version: 8, glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf', sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#eef2f5' } }] } as maplibregl.StyleSpecification;
   const markers: Record<string, maplibregl.Marker | undefined> = {};
 
   const setData = (id: string, fc: FC) => (map?.getSource(id) as maplibregl.GeoJSONSource | undefined)?.setData(fc as never);
@@ -44,14 +47,21 @@
   function onClick(e: maplibregl.MapMouseEvent) {
     if (!map) return;
     if (get(pickTarget)) { mapPick.set({ lat: e.lngLat.lat, lon: e.lngLat.lng }); return; }
-    const layers = ['bikes', 'stops', 'lines'].filter((id) => map!.getLayer(id));
-    const box: [maplibregl.PointLike, maplibregl.PointLike] = [[e.point.x - 10, e.point.y - 10], [e.point.x + 10, e.point.y + 10]];
-    const f = map.queryRenderedFeatures(box, { layers })[0];
-    if (!f) return;
-    const p = f.properties as Record<string, string | number>;
-    if (f.layer.id === 'bikes') navigate({ name: 'bike', uid: Number(p.uid) });
-    else if (f.layer.id === 'stops') navigate({ name: 'stop', stopId: String(p.id) });
-    else navigate({ name: 'line', number: String(p.number), dir: Number(p.directionId) || 0 });
+    const near = (r: number): [maplibregl.PointLike, maplibregl.PointLike] => [[e.point.x - r, e.point.y - r], [e.point.x + r, e.point.y + r]];
+    const q = (id: string, box: maplibregl.PointLike | [maplibregl.PointLike, maplibregl.PointLike]) => (map!.getLayer(id) ? map!.queryRenderedFeatures(box, { layers: [id] })[0] : undefined);
+    const p = (f: maplibregl.MapGeoJSONFeature) => f.properties as Record<string, string | number>;
+    const bike = q('bikes', near(10));
+    if (bike) { navigate({ name: 'bike', uid: Number(p(bike).uid) }); return; }
+    const ls = q('line-stops', e.point);
+    if (ls && map.getLayoutProperty('line-stops', 'visibility') === 'visible') {
+      const d = p(ls);
+      navigate({ name: 'line', number: String(d.number), dir: Number(d.directionId), stopId: data.stops[Number(d.stopIdx)].id }, true);
+      return;
+    }
+    const g = q('groups-hit', e.point);
+    if (g) { navigate({ name: 'stop', stopId: data.groups[Number(p(g).gi)].id }); return; }
+    const l = q('lines', near(10));
+    if (l) navigate({ name: 'line', number: String(p(l).number), dir: Number(p(l).directionId) || 0 });
   }
 
   async function locate() {
@@ -62,25 +72,59 @@
   }
 
   onMount(() => {
-    map = new maplibregl.Map({ container: el, style: MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-    map.on('load', () => { addLayers(map!, data); ready = true; });
-    map.on('click', onClick);
-    map.on('mousemove', (e) => {
-      const layers = ['bikes', 'stops', 'lines'].filter((id) => map!.getLayer(id));
-      map!.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : map!.queryRenderedFeatures(e.point, { layers }).length ? 'pointer' : '';
+    const m = new maplibregl.Map({ container: el, style: MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
+    map = m;
+    m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    let styled = false;
+    const fallBack = () => {
+      if (styled || fellBack) return;
+      fellBack = true;
+      m.setStyle(FALLBACK_STYLE);
+    };
+    // style.load fires for the first style and again after the fallback swap; setStyle drops our sources/layers/images
+    m.on('style.load', () => { styled = true; addLayers(m, data); gen++; });
+    m.on('error', fallBack);
+    const timer = setTimeout(fallBack, 8000);
+    m.on('click', onClick);
+    const hit = ['groups-hit', 'line-stops'];
+    m.on('mousemove', (e) => {
+      const cur = (id: string[]) => m.queryRenderedFeatures(e.point, { layers: id.filter((i) => m.getLayer(i)) });
+      const h = cur(hit).filter((f) => f.layer.id !== 'line-stops' || m.getLayoutProperty('line-stops', 'visibility') === 'visible')[0];
+      hoverGroup.set(h ? Number((h.properties as { gi: number }).gi) : null);
+      m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || cur(['bikes', 'lines']).length ? 'pointer' : '';
     });
-    return () => { map?.remove(); map = null; };
+    m.on('mouseout', () => hoverGroup.set(null));
+    return () => { clearTimeout(timer); hoverGroup.set(null); m.remove(); map = null; };
   });
 
+  let hovered: number | null = null;
+  $effect(() => {
+    const gi = $hoverGroup;
+    if (!gen || !map) return;
+    map.setFilter('groups-hover', ['==', ['get', 'gi'], gi ?? -1] as maplibregl.FilterSpecification);
+    for (const src of ['groups', 'line-stops']) {
+      if (hovered != null) map.setFeatureState({ source: src, id: hovered }, { hover: false });
+      if (gi != null) map.setFeatureState({ source: src, id: gi }, { hover: true });
+    }
+    hovered = gi;
+  });
+  $effect(() => {
+    const sel = $lineSelection;
+    if (!gen || !map) return;
+    const line = sel && data.lines.find((l) => l.number === sel.number);
+    setData('line-stops', line && sel ? lineStopsGeoJson(data.groups, data.stops, line, sel.directionId) : { type: 'FeatureCollection', features: [] });
+    for (const id of ['line-stops', 'line-stops-num']) map.setLayoutProperty(id, 'visibility', line ? 'visible' : 'none');
+    for (const id of ['groups', 'groups-hover']) map.setPaintProperty(id, 'icon-opacity', line ? 0.4 : 1);
+    map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
+  });
   $effect(() => { if ($bikesLayerOn) return useBikes(); });
   $effect(() => {
-    if (!ready || !map) return;
+    if (!gen || !map) return;
     setData('bikes', bikesGeoJson($bikes ?? []));
     for (const id of ['bikes', 'bikes-count']) map.setLayoutProperty(id, 'visibility', $bikesLayerOn ? 'visible' : 'none');
   });
   $effect(() => {
-    if (!ready || !map) return;
+    if (!gen || !map) return;
     // stale bike data: fade the markers
     const o = $bikesOk ? 1 : 0.35;
     map.setPaintProperty('bikes', 'circle-opacity', o);
@@ -88,24 +132,24 @@
     map.setPaintProperty('bikes-count', 'text-opacity', o);
   });
   $effect(() => {
-    if (!ready || !map) return;
+    if (!gen || !map) return;
     map.setFilter('lines-hl', ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
     const dim = !!($highlightLine || $tripOverlay);
     map.setPaintProperty('lines', 'line-opacity', dim ? 0.3 : 0.85);
     map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.3 : 0.9);
   });
   $effect(() => {
-    if (!ready || !map) return;
+    if (!gen || !map) return;
     setData('trip', $tripOverlay ? tripGeoJson($tripOverlay, data) : { type: 'FeatureCollection', features: [] });
   });
   $effect(() => {
-    if (!ready || !map) return;
+    if (!gen || !map) return;
     marker('from', $planMarkers.from, 'from', 'A');
     marker('to', $planMarkers.to, 'to', 'B');
   });
-  $effect(() => { if (ready) marker('me', $userPos, 'me'); });
+  $effect(() => { if (gen) marker('me', $userPos, 'me'); });
   $effect(() => {
-    if (!ready || !map || !$focusPoints?.length) return;
+    if (!gen || !map || !$focusPoints?.length) return;
     const b = bbox($focusPoints);
     if (!b) return;
     if ($focusPoints.length === 1) map.easeTo({ center: $focusPoints[0], zoom: Math.max(map.getZoom(), 15), padding: padding() });
@@ -114,10 +158,12 @@
 </script>
 
 <div class="map" bind:this={el}></div>
+{#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>{/if}
 <button class="locate" aria-label={$t('locate')} onclick={locate}>📍</button>
 
 <style>
   .map { position: absolute; inset: 0; }
+  .note { position: absolute; left: 10px; right: 64px; top: 10px; z-index: 4; background: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; box-shadow: var(--shadow); }
   .locate { position: absolute; right: 10px; top: 90px; z-index: 4; width: 44px; height: 44px; border-radius: 10px; background: var(--bg); box-shadow: var(--shadow); font-size: 1.2rem; }
   :global(.rb-marker) { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
   :global(.rb-marker.from) { background: #1d7a35; }

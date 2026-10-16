@@ -1,4 +1,4 @@
-import { LINE_STYLE, type LineRec, type StopRec } from '@rb/shared';
+import { LINE_STYLE, type LineRec, type StopRec, type StopGroup } from '@rb/shared';
 import type { AppData } from '../lib/data';
 import type { BikeStation, Itinerary } from '../router/types';
 
@@ -16,7 +16,24 @@ const lineStr = (coordinates: [number, number][], properties: Feature['propertie
 export const linesGeoJson = (lines: LineRec[]) =>
   fc(lines.flatMap((l) => l.directions.map((d) => lineStr(d.shape, { routeId: l.routeId, number: l.number, color: l.color, directionId: d.directionId }))));
 
-export const stopsGeoJson = (stops: StopRec[]) => fc(stops.map((s) => point(s.lon, s.lat, { id: s.id, name: s.name, platform: s.platform })));
+export const groupsGeoJson = (groups: StopGroup[]) =>
+  fc(groups.map((g, gi) => point(g.lon, g.lat, { gi, id: g.id, name: g.name, ring: 'ring-' + g.lines.join('-') })));
+
+/** Stops of one line direction, one point per stop group in travel order, numbered 1..n. */
+export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: LineRec, directionId: number): FC {
+  const dir = line.directions.find((d) => d.directionId === directionId);
+  if (!dir) return fc([]);
+  const seen = new Set<number>();
+  const features: Feature[] = [];
+  for (const stopIdx of dir.stops) {
+    const gi = stops[stopIdx].group;
+    if (seen.has(gi)) continue;
+    seen.add(gi);
+    const n = features.length + 1;
+    features.push(point(groups[gi].lon, groups[gi].lat, { gi, n, color: line.color, text: line.text, stopIdx, number: line.number, directionId }));
+  }
+  return fc(features);
+}
 
 export const bikesGeoJson = (stations: BikeStation[]) => fc(stations.map((b) => point(b.lon, b.lat, { uid: b.uid, name: b.name, bikes: b.bikes })));
 

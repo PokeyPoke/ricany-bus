@@ -82,6 +82,7 @@ const cs = {
   lineNotFound: 'Linka nenalezena',
   stationNotFound: 'Stanice nenalezena',
   locate: 'Moje poloha na mapě',
+  mapFallback: 'Mapa se nenačetla — zobrazuji jen linky a zastávky',
 } as const;
 
 type Key = keyof typeof cs;
@@ -167,6 +168,7 @@ const en: Record<Key, string> = {
   lineNotFound: 'Line not found',
   stationNotFound: 'Station not found',
   locate: 'Show my location',
+  mapFallback: "Map didn't load — showing lines and stops only",
 };
 
 export type Lang = 'cs' | 'en';

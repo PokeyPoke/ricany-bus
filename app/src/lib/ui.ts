@@ -10,6 +10,8 @@ export const highlightLine = writable<FreeRouteId | null>(null);
 export const focusPoints = writable<[number, number][] | null>(null);
 export const userPos = writable<{ lat: number; lon: number } | null>(null);
 export const planMarkers = writable<{ from?: PlaceRef; to?: PlaceRef }>({});
+export const hoverGroup = writable<number | null>(null);
+export const lineSelection = writable<{ number: string; directionId: number } | null>(null);
 export const now = readable(pragueNow(), (set) => {
   // Svelte keeps the last value while unsubscribed, so refresh immediately on (re)subscribe
   // and whenever the tab becomes visible again.
