@@ -24,10 +24,11 @@ function pragueUtc(date: string, hh: number, mm: number): Date {
 }
 
 export const CLOCK = pragueUtc(DATE, 7, 30);
-const pat3 = timetable.patterns.find((p) => p.routeId === 'L1733' && p.directionId === 0 && p.trips.some((t) => services[DATE].includes(t.service) && t.dep[0] >= 7.5 * 3600))!;
+const line3 = lines.find((l) => l.number === '3')!;
+const pat3 = timetable.patterns.find((p) => p.routeId === line3.routeId && p.directionId === 0 && p.trips.some((t) => services[DATE].includes(t.service) && t.dep[0] >= 7.5 * 3600))!;
 export const BUS_TRIP = pat3.trips.find((t) => services[DATE].includes(t.service) && t.dep[0] >= 7.5 * 3600)!.id;
 const busStop = stops[pat3.stops[0]];
-export const BUS = { id: 'bus-1', label: '1', tripId: BUS_TRIP, routeId: 'L1733', startDate: DATE, lat: busStop.lat, lon: busStop.lon, bearing: 45, speed: 0, stopSeq: pat3.seq[0], ts: Math.floor(CLOCK.getTime() / 1000) };
+export const BUS = { id: 'bus-1', label: '1', tripId: BUS_TRIP, routeId: line3.routeId, startDate: DATE, lat: busStop.lat, lon: busStop.lon, bearing: 45, speed: 0, stopSeq: pat3.seq[0], ts: Math.floor(CLOCK.getTime() / 1000) };
 
 const first = stops[lines[0].directions[0].stops[0]];
 export const NEXTBIKE = { countries: [{ cities: [{ uid: 736, places: [

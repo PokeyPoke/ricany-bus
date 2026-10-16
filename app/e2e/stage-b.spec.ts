@@ -10,8 +10,7 @@ test('a live bus on the map opens the bus sheet when tapped', async ({ page }) =
   await page.waitForFunction(() => (window as any).__rbMap?.getSource('buses'));
   // bring the bus into the part of the map not covered by the bottom sheet
   await page.evaluate((b) => (window as any).__rbMap.jumpTo({ center: [b.lon, b.lat], zoom: 15, padding: { bottom: 450 } }), BUS);
-  await page.waitForFunction(() => (window as any).__rbMap.queryRenderedFeatures({ layers: ['buses'] }).length > 0);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(() => { const m = (window as any).__rbMap; return !m.isMoving() && m.queryRenderedFeatures({ layers: ['buses'] }).length > 0; });
   const pt = await page.evaluate(() => {
     const m = (window as any).__rbMap;
     const r = m.getCanvas().getBoundingClientRect();
@@ -30,7 +29,6 @@ test('bus sheet by URL shows line 3 and upcoming stops', async ({ page }) => {
   await page.goto(`./#/bus/${BUS_TRIP}`);
   await expect(page.locator('.sheet-header .badge')).toHaveText('3');
   expect(await page.locator('.list .row').count()).toBeGreaterThan(1);
-  expect(BUS.tripId).toBe(BUS_TRIP);
 });
 
 test('line view: numbered stop markers on the map and aria-current on tap', async ({ page }) => {
@@ -75,6 +73,7 @@ test.describe('offline', () => {
     await page.reload();
     await page.waitForFunction(() => !!navigator.serviceWorker.controller);
     await context.setOffline(true);
+    // hash-only navigation stays in the same document, so reload to force the service worker to serve the app shell offline
     await page.goto(`./#/plan?mode=now&from=${place(a)}&to=${place(b)}`);
     await page.reload();
     await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });

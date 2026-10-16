@@ -160,7 +160,7 @@
   onMount(() => {
     const m = new maplibregl.Map({ container: el, style: MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
     map = m;
-    if (import.meta.env.MODE !== 'production' || location.search.includes('e2e')) (window as unknown as { __rbMap?: maplibregl.Map }).__rbMap = m;
+    if (import.meta.env.MODE !== 'production' || new URLSearchParams(location.search).has('e2e')) (window as unknown as { __rbMap?: maplibregl.Map }).__rbMap = m;
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     let styled = false, warned = false;
     const fallBack = () => {
