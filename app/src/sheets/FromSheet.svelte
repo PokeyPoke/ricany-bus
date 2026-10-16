@@ -64,7 +64,9 @@
   <h1>{group ? `🚏 ${group.name}` : $t('stopNotFound')}</h1>
 </div>
 
-{#if group}
+{#if group && lineNo && !lines.length}
+  <p class="muted">{$t('lineNotFound')}</p>
+{:else if group}
   <PlaceInput label={$t('otherPlace')} value={undefined} stops={data.stops} target="to" onChange={choose} />
 
   {#each sections as s (s.l.number)}
@@ -74,7 +76,7 @@
           <LineBadge routeId={s.l.routeId} /> <span class="head">→ {s.direction.headsign}</span> <span aria-hidden="true">{s.open ? '▾' : '▸'}</span>
         </button>
         {#if !lineNo && s.l.directions.length > 1}
-          <button class="secondary flip" aria-label={`${s.l.number} ⇄`} onclick={() => (chosen[s.l.number] = s.l.directions.find((d) => d.directionId !== s.direction.directionId)!.directionId)}>⇄</button>
+          <button class="secondary flip" aria-label={$t('switchDirection')} onclick={() => (chosen[s.l.number] = s.l.directions.find((d) => d.directionId !== s.direction.directionId)!.directionId)}>⇄</button>
         {/if}
       </div>
       {#if s.open}
@@ -104,6 +106,6 @@
   .toggle { flex: 1; display: flex; gap: 8px; align-items: center; min-height: 44px; text-align: left; }
   .head { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .flip { min-width: 44px; min-height: 44px; }
-  .ds { width: 100%; display: flex; justify-content: space-between; gap: 8px; text-align: left; }
+  .ds { min-height: 44px; width: 100%; display: flex; justify-content: space-between; gap: 8px; text-align: left; }
   .link { margin-top: 14px; width: 100%; }
 </style>

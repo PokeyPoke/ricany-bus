@@ -45,9 +45,18 @@
 
   // map -> list: bring the hovered stop's row into view
   let listEl: HTMLOListElement | undefined = $state();
+  let fromList = false; // hover that started on a list row must not scroll the list
+  const enter = (e: PointerEvent, g: number) => { if (e.pointerType !== 'mouse') return; fromList = true; hoverGroup.set(g); };
+  const leave = (e: PointerEvent) => { if (e.pointerType !== 'mouse') return; fromList = false; hoverGroup.set(null); };
+  $effect(() => () => hoverGroup.set(null));
+  // selection (list tap or map marker tap): keep the selected row visible
+  $effect(() => {
+    if (selIdx < 0 || !listEl) return;
+    listEl.querySelector<HTMLElement>(`li[data-gi="${data.stops[selIdx].group}"]`)?.scrollIntoView({ block: 'nearest' });
+  });
   $effect(() => {
     const g = $hoverGroup;
-    if (g == null || !listEl) return;
+    if (g == null || !listEl || fromList) return;
     listEl.querySelector<HTMLElement>(`li[data-gi="${g}"]`)?.scrollIntoView({ block: 'nearest' });
   });
 
@@ -97,7 +106,7 @@
     {#each direction.stops as i (i)}
       <li data-gi={data.stops[i].group}>
         <button class:sel={i === selIdx} class:hover={$hoverGroup === data.stops[i].group} aria-current={i === selIdx ? 'true' : undefined}
-          onmouseenter={() => hoverGroup.set(data.stops[i].group)} onmouseleave={() => hoverGroup.set(null)} onclick={() => setStop(i)}>{data.stops[i].name}{#if data.stops[i].platform}<small class="muted"> · {data.stops[i].platform}</small>{/if}</button>
+          onpointerenter={(e) => enter(e, data.stops[i].group)} onpointerleave={leave} onclick={() => setStop(i)}>{data.stops[i].name}{#if data.stops[i].platform}<small class="muted"> · {data.stops[i].platform}</small>{/if}</button>
       </li>
     {/each}
   </ol>
@@ -111,7 +120,7 @@
   .h { font-weight: 800; text-align: right; }
   .m { white-space: pre-wrap; }
   .stops { margin: 0; padding-left: 22px; }
-  .stops button { min-height: 40px; text-align: left; }
+  .stops button { min-height: 44px; text-align: left; }
   .where { margin-top: 6px; }
   .stops button.hover { background: var(--chip); border-radius: 8px; }
   .stops button.sel { font-weight: 800; color: var(--accent); }

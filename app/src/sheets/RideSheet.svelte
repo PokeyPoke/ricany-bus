@@ -76,7 +76,7 @@
 
 <style>
   .ln { font-size: 1rem; }
-  .ride { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; }
+  .ride { min-height: 44px; display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; }
   .time { font-weight: 700; font-variant-numeric: tabular-nums; }
   .when { font-size: 0.85rem; color: var(--muted); text-align: right; white-space: nowrap; }
   .full { margin-top: 12px; width: 100%; }

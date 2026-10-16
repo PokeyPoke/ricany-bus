@@ -19,6 +19,7 @@ function decPlace(s: string | null): PlaceRef | undefined {
   const p = { lat: Number(lat), lon: Number(lon), name: rest.join(',') };
   return Number.isFinite(p.lat) && Number.isFinite(p.lon) && lat !== '' && lon !== '' ? p : undefined;
 }
+const dir01 = (v: string | null): number => (Number(v) === 1 ? 1 : 0);
 const opt = (v: string | null) => v ?? undefined;
 
 export function parseHash(hash: string): Route {
@@ -48,12 +49,12 @@ export function parseHash(hash: string): Route {
       return parts[1] ? { name: 'bus', tripId: parts[1] } : { name: 'home' };
     case 'from': {
       if (!parts[1]) return { name: 'home' };
-      const line = opt(q.get('line'));
-      return { name: 'from', groupId: parts[1], line, dir: line ? Number(q.get('dir')) || 0 : undefined };
+      const line = q.get('line') || undefined;
+      return { name: 'from', groupId: parts[1], line, dir: line ? dir01(q.get('dir')) : undefined };
     }
     case 'ride': {
       const line = q.get('line'), from = q.get('from'), to = q.get('to');
-      return line && from && to ? { name: 'ride', line, dir: Number(q.get('dir')) || 0, from, to } : { name: 'home' };
+      return line && from && to ? { name: 'ride', line, dir: dir01(q.get('dir')), from, to } : { name: 'home' };
     }
     default:
       return { name: 'home' };

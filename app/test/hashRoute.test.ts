@@ -30,6 +30,12 @@ describe('hashRoute', () => {
     expect(parseHash('#/ride?line=3&dir=0&from=a')).toEqual({ name: 'home' });
     expect(parseHash('#/from/U1?line=3')).toEqual({ name: 'from', groupId: 'U1', line: '3', dir: 0 });
   });
+  it('from/ride edge cases', () => {
+    expect(parseHash('#/from/U1?line=&dir=1')).toEqual({ name: 'from', groupId: 'U1', line: undefined, dir: undefined });
+    expect(parseHash('#/from/U1?line=3&dir=7')).toEqual({ name: 'from', groupId: 'U1', line: '3', dir: 0 });
+    expect(parseHash('#/ride?line=3&dir=-1&from=a&to=b')).toMatchObject({ dir: 0 });
+    expect(parseHash('#/ride?line=&dir=0&from=a&to=b')).toEqual({ name: 'home' });
+  });
   it('does not throw on malformed percent-encoding', () => {
     expect(parseHash('#/stop/%E0%A4%A')).toEqual({ name: 'home' });
   });
