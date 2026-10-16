@@ -9,13 +9,13 @@ permissions:
   id-token: write
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run data
       - id: commit

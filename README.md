@@ -18,7 +18,7 @@ Mobile web app that plans trips in Říčany using **only** the free MHD Říča
 - `npm run data` — regenerate timetable data from the live PID feed
 - `npm run dev -w app` — local dev server
 - `npx playwright install chromium` (once), then `npm run e2e -w app` — Playwright e2e on a Pixel 7 viewport with mocked external APIs
-- `cd worker && npx --yes wrangler@4 deploy` — deploy the Worker. The Worker is deployed **manually** from the owner's Mac (the spec called for a GitHub Action; Stage A does not have one). Re-run after any change under `worker/`.
+- `cd worker && npx --yes wrangler@4 deploy` — deploy the Worker manually. The "Deploy Worker" GitHub workflow (`.github/workflows/worker.yml`) deploys automatically on pushes to `main` that touch `worker/` or `shared/`, but only when the `CLOUDFLARE_API_TOKEN` secret exists (Workers Scripts:Edit on this account); otherwise it skips the deploy with a notice and you deploy manually as above.
 
 ## Known limitations
 - Offline use is configured (PWA service worker) but not exercised by the e2e tests.

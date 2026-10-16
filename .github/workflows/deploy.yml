@@ -13,13 +13,13 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main   # when called after the nightly data commit, build the new commit
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
+        with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
@@ -28,7 +28,7 @@ jobs:
         with: { path: app/dist }
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.d.outputs.page_url }}
