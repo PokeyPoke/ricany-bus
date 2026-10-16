@@ -26,6 +26,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        globIgnores: ['og.png'],
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}', 'data/*.json'],
         runtimeCaching: [
           { urlPattern: ({ url }) => url.pathname.includes('/data/') && url.pathname.endsWith('.json'), handler: 'StaleWhileRevalidate', options: { cacheName: 'rb-data' } },

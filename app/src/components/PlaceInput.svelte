@@ -41,7 +41,7 @@
     ];
     const found: Item[] = [
       ...savedMatches.map((s): Item => ({ key: `s-${s.id}`, icon: s.icon, text: s.label, run: () => choose({ lat: s.lat, lon: s.lon, name: s.label }) })),
-      ...hits.map((h, i): Item => ({ key: `${h.kind}-${h.name}-${i}`, icon: h.kind === 'stop' ? '🚏' : '📌', text: h.name, detail: h.detail, run: () => choose(h) }))
+      ...hits.map((h): Item => ({ key: `${h.kind}-${h.name}-${h.lat.toFixed(5)},${h.lon.toFixed(5)}`, icon: h.kind === 'stop' ? '🚏' : '📌', text: h.name, detail: h.detail, run: () => choose(h) }))
     ];
     return query ? [...found, ...actions] : [...actions, ...found];
   });
