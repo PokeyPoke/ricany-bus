@@ -31,12 +31,12 @@ describe('validate', () => {
   it('fails when the calendar yields no service days (empty/broken calendar)', () => {
     const bad = structuredClone(data);
     bad.timetable.servicesByDate = {};
-    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('only 0 of the next 7 days have service'))).toBe(true);
+    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('only 0 of the next 10 days have service (need ≥ 3)'))).toBe(true);
   });
   it('ignores active service ids that have no trips in the patterns', () => {
     const bad = structuredClone(data);
     for (const d of Object.keys(bad.timetable.servicesByDate)) bad.timetable.servicesByDate[d] = ['GHOST'];
-    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('only 0 of the next 7 days have service'))).toBe(true);
+    expect(validate(bad, '20261015', ok).some((e) => e.startsWith('only 0 of the next 10 days have service (need ≥ 3)'))).toBe(true);
   });
   it('fails on non-finite times', () => {
     const bad = structuredClone(data);

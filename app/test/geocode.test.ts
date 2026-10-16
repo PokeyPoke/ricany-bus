@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import type { StopRec } from '@rb/shared';
 import { searchStops, searchPhoton, norm } from '../src/lib/geocode';
 
-const s = (id: string, name: string, lat: number, lines: StopRec['lines']): StopRec => ({ id, name, platform: 'A', lat, lon: 14.65, lines, transfers: [] });
+const s = (id: string, name: string, lat: number, lines: StopRec['lines']): StopRec => ({ id, name, platform: 'A', lat, lon: 14.65, lines, transfers: [], group: 0 });
 const stops = [s('a', 'Masarykovo nám.', 49.99, ['L1731']), s('b', 'Masarykovo nám.', 49.992, ['L1733']), s('c', 'Sídl.Olivovna', 50.0, ['L1736']), s('d', 'Olivovna', 50.01, ['L1737'])];
 
 afterEach(() => vi.unstubAllGlobals());

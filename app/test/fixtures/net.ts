@@ -5,7 +5,7 @@ export const H = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
 // Six stops on one meridian, ~1.56 km apart (beyond 1.2 km walking), except S3 which is 167 m from S2.
 const LATS = [49.99, 50.004, 50.018, 50.0195, 50.033, 50.047];
 export const stops: StopRec[] = LATS.map((lat, i) => ({
-  id: 'S' + i, name: 'S' + i, platform: 'A', lat, lon: 14.65, lines: [], transfers: [],
+  id: 'S' + i, name: 'S' + i, platform: 'A', lat, lon: 14.65, lines: [], transfers: [], group: i,
 }));
 stops[2].transfers.push([3, 174]);
 stops[3].transfers.push([2, 174]);

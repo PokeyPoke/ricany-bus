@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { dirSource } from '../src/source';
 import { extractFree, type RawFree } from '../src/extract';
-import { buildData, activeServices, type BuiltData } from '../src/build';
+import { buildData, activeServices, groupStops, type BuiltData } from '../src/build';
 
 const FIX = fileURLToPath(new URL('./fixture', import.meta.url));
 let raw: RawFree;
@@ -63,5 +63,25 @@ describe('buildData', () => {
   });
   it('writes meta', () => {
     expect(data.meta).toEqual({ feedStart: '20261015', feedEnd: '20261028', generatedAt: '2026-10-15T04:30:00Z', tripCount: 4 });
+  });
+});
+
+describe('groups', () => {
+  it('one group per display name with mean position, sorted platforms, ordered lines', () => {
+    const g = data.groups.groups;
+    expect(g.map((x) => x.name).sort()).toEqual(['Alfa', 'Beta', 'Delta', 'Epsilon', 'Gamma']);
+    const alfa = g.find((x) => x.name === 'Alfa')!;
+    expect(alfa.id).toBe('UA');
+    expect(alfa.platforms).toEqual([idx('UA')]);
+    expect(alfa.lines).toEqual(['L1731']);
+    data.stops.stops.forEach((s, i) => expect(g[s.group].platforms).toContain(i));
+  });
+  it('groupStops merges platforms by name', () => {
+    const mk = (id: string, lat: number, lon: number, lines: ('L1731' | 'L1733')[]) =>
+      ({ id, name: 'X', platform: id, lat, lon, lines, transfers: [] as [number, number][] });
+    const { groups, groupOf } = groupStops([mk('B', 50.002, 14.002, ['L1733']), mk('A', 50.0, 14.0, ['L1731'])]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({ id: 'A', platforms: [1, 0], lines: ['L1731', 'L1733'], lat: 50.001, lon: 14.001 });
+    expect(groupOf).toEqual([0, 0]);
   });
 });

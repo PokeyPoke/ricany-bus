@@ -6,7 +6,7 @@ import type { Itinerary } from '../src/router/types';
 import { stops, timetable, H } from './fixtures/net';
 
 const line: LineRec = { routeId: 'L1731', number: '1', color: '#E4002B', text: '#FFFFFF', longName: 'x', directions: [{ directionId: 0, headsign: 'S2', stops: [0, 1, 2], shape: [[14.65, 49.99], [14.65, 50.018]] }] };
-const data: AppData = { stops, lines: [line], timetable, meta: { feedStart: '', feedEnd: '', generatedAt: '', tripCount: 0 } };
+const data: AppData = { stops, groups: [], lines: [line], timetable, meta: { feedStart: '', feedEnd: '', generatedAt: '', tripCount: 0 } };
 
 describe('geojson', () => {
   it('lines, stops and bikes', () => {

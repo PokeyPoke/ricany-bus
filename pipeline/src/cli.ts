@@ -31,7 +31,7 @@ async function main() {
     process.exit(1);
   }
   mkdirSync(OUT, { recursive: true });
-  for (const [name, value] of Object.entries({ stops: data.stops, lines: data.lines, timetable: data.timetable, meta: data.meta })) {
+  for (const [name, value] of Object.entries({ stops: data.stops, groups: data.groups, lines: data.lines, timetable: data.timetable, meta: data.meta })) {
     const p = join(OUT, `${name}.json`);
     writeFileSync(p, JSON.stringify(value));
     console.log(`${name}.json ${(statSync(p).size / 1024).toFixed(1)} KB`);

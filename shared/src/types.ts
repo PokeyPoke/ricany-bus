@@ -9,8 +9,22 @@ export interface StopRec {
   lines: FreeRouteId[];
   /** [target stop index, walking seconds] for stops ≤ 400 m away */
   transfers: [number, number][];
+  /** index into groups */
+  group: number;
 }
 export interface StopsFile { stops: StopRec[] }
+
+/** Platforms sharing a display name. id = id of the first platform (ids ascending). */
+export interface StopGroup {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  /** stop indices, sorted by stop id */
+  platforms: number[];
+  lines: FreeRouteId[];
+}
+export interface GroupsFile { groups: StopGroup[] }
 
 export interface LineDirection {
   directionId: number;

@@ -1,12 +1,12 @@
 import {
-  FREE_ROUTE_IDS, LINE_STYLE, MAX_TRANSFER_WALK_M, addDays, weekday, daysBetween, haversine, walkSec,
-  type FreeRouteId, type StopRec, type StopsFile, type LinesFile, type LineRec, type TimetableFile,
+  FREE_ROUTE_IDS, LINE_ORDER, LINE_STYLE, MAX_TRANSFER_WALK_M, addDays, weekday, daysBetween, haversine, walkSec,
+  type FreeRouteId, type StopRec, type StopsFile, type StopGroup, type GroupsFile, type LinesFile, type LineRec, type TimetableFile,
   type MetaFile, type PatternRec,
 } from '@rb/shared';
 import type { RawFree } from './extract';
 import type { Row } from './source';
 
-export interface BuiltData { stops: StopsFile; lines: LinesFile; timetable: TimetableFile; meta: MetaFile }
+export interface BuiltData { stops: StopsFile; groups: GroupsFile; lines: LinesFile; timetable: TimetableFile; meta: MetaFile }
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const stripCity = (s: string) => s.replace(/^Říčany,\s*/, '');
@@ -35,13 +35,28 @@ function simplify(points: [number, number][], minM = 10): [number, number][] {
   return out.map(([x, y]) => [+x.toFixed(5), +y.toFixed(5)]);
 }
 
+export function groupStops(stops: Omit<StopRec, 'group'>[]): { groups: StopGroup[]; groupOf: number[] } {
+  const byName = new Map<string, number[]>();
+  stops.forEach((s, i) => byName.set(s.name, [...(byName.get(s.name) ?? []), i]));
+  const mean = (idxs: number[], k: 'lat' | 'lon') => +(idxs.reduce((n, i) => n + stops[i][k], 0) / idxs.length).toFixed(6);
+  const groups: StopGroup[] = [...byName].map(([name, idxs]) => {
+    const platforms = [...idxs].sort((a, b) => (stops[a].id < stops[b].id ? -1 : 1));
+    const lines = LINE_ORDER.filter((l) => platforms.some((i) => stops[i].lines.includes(l)));
+    return { id: stops[platforms[0]].id, name, lat: mean(platforms, 'lat'), lon: mean(platforms, 'lon'), platforms, lines };
+  });
+  groups.sort((a, b) => a.name.localeCompare(b.name, 'cs'));
+  const groupOf: number[] = new Array(stops.length);
+  groups.forEach((g, gi) => g.platforms.forEach((i) => { groupOf[i] = gi; }));
+  return { groups, groupOf };
+}
+
 export function buildData(raw: RawFree, today: string, generatedAt: string): BuiltData {
   // Stops
   const stopIds = [...raw.stops.keys()].sort();
   const idx = new Map(stopIds.map((id, i) => [id, i]));
   const stops: StopRec[] = stopIds.map((id) => {
     const s = raw.stops.get(id)!;
-    return { id, name: stripCity(s.name), platform: s.platform, lat: s.lat, lon: s.lon, lines: [], transfers: [] };
+    return { id, name: stripCity(s.name), platform: s.platform, lat: s.lat, lon: s.lon, lines: [], transfers: [], group: -1 };
   });
   for (const t of raw.trips) {
     for (const st of t.stopTimes) {
@@ -57,6 +72,9 @@ export function buildData(raw: RawFree, today: string, generatedAt: string): Bui
       if (m <= MAX_TRANSFER_WALK_M) stops[i].transfers.push([j, walkSec(m)]);
     }
   }
+
+  const { groups, groupOf } = groupStops(stops);
+  stops.forEach((s, i) => { s.group = groupOf[i]; });
 
   // Patterns (unique route + direction + stop/seq list)
   const byKey = new Map<string, PatternRec & { shapeId: string }>();
@@ -105,6 +123,7 @@ export function buildData(raw: RawFree, today: string, generatedAt: string): Bui
   const tripCount = patterns.reduce((n, p) => n + p.trips.length, 0);
   return {
     stops: { stops },
+    groups: { groups },
     lines: { lines },
     timetable: { patterns, servicesByDate },
     meta: { feedStart: raw.feedInfo.start, feedEnd: raw.feedInfo.end, generatedAt, tripCount },
