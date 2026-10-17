@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import UpdateBar from '../components/UpdateBar.svelte';
   import { pragueNow } from '@rb/shared';
   import Home from '../sheets/Home.svelte';
   import Planner from '../sheets/Planner.svelte';
@@ -44,6 +45,7 @@
 <div class="app">
   <!-- every screen is one sentence: "Z … do … · kdy"; editing a word is the only navigation -->
   {#if data}<SentenceBar {data} />{:else}<header class="topbar"><strong>Říčany zdarma</strong></header>{/if}
+  <UpdateBar />
   {#if stale}<div class="banner" role="status">{$t('staleData')}</div>{/if}
   {#if !online}<div class="banner" role="status">{$t('offline')}</div>{/if}
   <main class="stage">

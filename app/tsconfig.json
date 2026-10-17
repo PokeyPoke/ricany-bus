@@ -1,5 +1,5 @@
 {
   "extends": "../tsconfig.base.json",
-  "compilerOptions": { "types": ["node", "vite/client"], "verbatimModuleSyntax": true },
+  "compilerOptions": { "types": ["node", "vite/client", "vite-plugin-pwa/client"], "verbatimModuleSyntax": true },
   "include": ["src/**/*.ts", "src/**/*.svelte", "test/**/*.ts", "e2e/**/*.ts", "*.ts"]
 }
