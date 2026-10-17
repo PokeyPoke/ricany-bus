@@ -104,8 +104,11 @@
     </div>
   {/if}
 
-  <h2>{data.stops[selIdx]?.name}</h2>
-  <button class="primary where" onclick={whereTo}>{$t('whereTo')}</button>
+  <!-- the timetable belongs to the chosen stop (pick another in the list below) -->
+  <div class="tt-head">
+    <h2>{$t('timetableAt', { stop: data.stops[selIdx]?.name ?? '' })}</h2>
+    <button class="secondary" onclick={whereTo}>{$t('planFromHere')}</button>
+  </div>
   <div class="seg" role="group">
     {#each DAYS as d (d)}<button aria-pressed={dayType === d} onclick={() => (dayType = d)}>{$t(d)}</button>{/each}
   </div>
@@ -140,7 +143,8 @@
   .m { font-size: 0.9rem; color: var(--muted); }
   .stops { margin: 0; padding-left: 22px; }
   .stops button { min-height: 44px; text-align: left; }
-  .where { margin-top: 6px; }
+  .tt-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .tt-head h2 { text-transform: none; letter-spacing: 0; font-size: 1rem; color: var(--fg); }
   .stops button.hover { background: var(--chip); border-radius: 8px; }
   .stops button.sel { font-weight: 800; color: var(--accent); }
 </style>

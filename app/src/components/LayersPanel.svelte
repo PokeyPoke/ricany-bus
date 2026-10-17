@@ -30,7 +30,8 @@
 </div>
 
 <style>
-  .layers { position: absolute; right: 10px; top: 160px; z-index: 4; }
+  .layers { position: absolute; right: 10px; top: 62px; z-index: 4; }
+  @media (pointer: fine) { .layers { top: 160px; } }
   .btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
   .pop { position: absolute; right: 52px; top: 0; background: var(--bg); box-shadow: var(--shadow); border-radius: 12px; padding: 4px; min-width: 210px; }
   .sw { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px; text-align: left; border-radius: 8px; }

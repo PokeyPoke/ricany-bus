@@ -124,11 +124,11 @@ test('layers panel: Nextbike off by default, switches toggle and persist', async
   await expect(page.getByRole('switch', { name: 'Stanice Nextbike' })).toHaveAttribute('aria-checked', 'true');
 });
 
-test('line view -> Kam jedete? -> downstream stop -> direct ride list', async ({ page }) => {
+test('line view -> Jet odsud -> downstream stop -> direct ride list', async ({ page }) => {
   await page.goto('./#/line/3');
   await page.locator('ol.stops li button').nth(3).click();
   await expect(page.locator('ol.stops button[aria-current="true"]')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Kam jedete?' }).last().click();
+  await page.getByRole('button', { name: 'Jet odsud' }).click();
   await expect(page).toHaveURL(/#\/from\/.*line=3/);
   await page.locator('.ds').first().click();
   await expect(page).toHaveURL(/#\/ride\?/);

@@ -16,4 +16,8 @@ describe('legChain', () => {
     const bike: Leg = { kind: 'bike', from: { uid: 1, name: 'a', lat: 0, lon: 0, bikes: 1, freeRacks: 1 }, to: { uid: 2, name: 'b', lat: 0, lon: 0, bikes: 1, freeRacks: 1 }, depart: 60, arrive: 660, meters: 2000 };
     expect(legChain([walk(0, 20), bike, walk(660, 700)])).toEqual([{ kind: 'walk', min: 1 }, { kind: 'bike', min: 10 }, { kind: 'walk', min: 1 }]);
   });
+  it('leaves out a walk of a few metres to the stop', () => {
+    const tiny: Leg = { ...walk(0, 10), meters: 7 } as Leg;
+    expect(legChain([tiny, bus(60, 600)])).toEqual([{ kind: 'bus', routeId: 'L1737' }]);
+  });
 });
