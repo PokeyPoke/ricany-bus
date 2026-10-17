@@ -38,6 +38,13 @@ describe('geojson', () => {
     expect(fc.features[0].geometry.coordinates).toEqual([[14.65, 49.99], [14.65, 50.004], [14.65, 50.018]]);
     expect(fc.features[0].properties.color).toBe('#E4002B');
   });
+  it('trip overlay follows the line shape between stops', () => {
+    // the shape bends 20 m east between S0 and S1
+    const bent = { ...line, directions: [{ ...line.directions[0], shape: [[14.65, 49.99], [14.6503, 49.997], [14.65, 50.004], [14.65, 50.018]] as [number, number][] }] };
+    const leg = { kind: 'bus', routeId: 'L1731', headsign: 'S2', tripId: 'a1', serviceDate: '20261019', pattern: 0, boardPos: 0, alightPos: 1, boardSeq: 1, alightSeq: 2, from: 0, to: 1, depart: H(8, 0), arrive: H(8, 5), stopCount: 1 } as const;
+    const fc = tripGeoJson({ date: '20261019', depart: H(8, 0), arrive: H(8, 5), rides: 1, free: true, legs: [leg] }, { ...data, lines: [bent] });
+    expect(fc.features[0].geometry.coordinates).toEqual([[14.65, 49.99], [14.6503, 49.997], [14.65, 50.004]]);
+  });
   it('bbox', () => {
     expect(bbox([[1, 2], [3, 0], [2, 5]])).toEqual([[1, 0], [3, 5]]);
     expect(bbox([])).toBeNull();
