@@ -19,7 +19,11 @@ export const mapPick = writable<{ lat: number; lon: number } | null>(null);
 export const tripOverlay = writable<Itinerary | null>(null);
 export const highlightLine = writable<FreeRouteId | null>(null);
 export const focusPoints = writable<[number, number][] | null>(null);
-export const userPos = writable<{ lat: number; lon: number } | null>(null);
+/** acc: accuracy radius in metres as the phone reports it; at: fix time (ms) */
+export interface UserPos { lat: number; lon: number; acc: number; at: number }
+export const userPos = writable<UserPos | null>(null);
+/** worse than this the location is approximate (the phone's "precise location" is off, or no GPS yet) */
+export const APPROX_M = 300;
 export const planMarkers = writable<{ from?: PlaceRef; to?: PlaceRef }>({});
 /** set by the new (sentence) version: what a tap on a stop in the map means there */
 export const stopTap = writable<((groupId: string) => void) | null>(null);
