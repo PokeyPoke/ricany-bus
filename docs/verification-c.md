@@ -29,3 +29,15 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 ## Follow-up: route variants and parked buses (2026-10-17)
 - **Route variants on the map.** Lines used to draw one route per direction (the variant with the most stops), so line 1's main Strašín ↔ Kuří route (25 trips/day) was missing behind the 8-trip OÁZA variant. Now each direction lists every variant that serves stops the others miss, most frequent first (only line 1 is affected: `→ Strašín | OÁZA → Strašín | → Kuří | → OÁZA`). `dir` in URLs and `lineSelection` is now an index into `LineRec.directions`.
 - **Parked buses.** A line 1 bus was reported 454 m off its route: it was parked at Wolkerova on layover, already signed on to its next trip (12:44 from OÁZA). Buses whose trip has not reached its first departure are drawn at 45 % opacity and the bus sheet says "Čeká na odjezd: 13:14 ze zastávky Strašín" (verified with a simulated vehicle at that spot).
+
+## Batch 3 (2026-10-17): polish and resident features
+- **Bus legs follow the line**: planned bus legs are drawn stop to stop along the line shape (straight only where no shape fits).
+- **Nextbike suggestions**: paid options (bike-only and bike + bus) appear only when ≥ 5 min better than every free option, walking included; previously an empty bus list let any bike option through (seen: bike + bus 45 min later for a 200 m walk).
+- **No-service days**: home says "Dnes nejezdí žádná bezplatná linka. Další spoj: pondělí 19. 10. v 5:20 (linka 2)."
+- **Street distances**: stop board "nearest bike" and the bike station's nearby stops rank and show walking distance along streets (the page loads its own copy of the street graph).
+- **Departures near me**: home lists the next 3 departures from the 2 nearest stops with service (walking minutes, live delays); locates automatically when location is already allowed, otherwise on a tap.
+- **Service alerts**: Worker `/alerts` (GTFS-RT alerts.pb, byte-prefiltered, free lines only); app shows active alerts on home, the affected line and trips using it, with the pid.cz link. On 2026-10-17 the feed had 4 alerts, none for the free lines. **Needs a Worker deploy** to go live; until then the app shows no alerts.
+- **Accessibility**: every free-line trip is marked low-floor in the PID feed (stated on About). Only 3 free-line platforms have known stop accessibility, all "not accessible" (Pod Lihovarem A, Pacov,u hřbitova A/B); the stop board and trip detail warn about them. No planner filter: 92 of 95 stops are "unknown".
+- **Leave-now countdown**: trip detail counts down to when to set off (first bus incl. live delay minus the walk), with an optional 2-minute vibration/notification reminder while the app is open. Hidden for trips without a bus.
+- **Refresh street map** workflow (manual) runs `npm run streets` + `npm run data`, commits and deploys.
+- Tests: shared 18, pipeline 29, worker 21, app 141; e2e 23 (new: nearby departures, alerts, countdown).

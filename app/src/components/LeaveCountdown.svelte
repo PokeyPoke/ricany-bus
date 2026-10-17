@@ -10,8 +10,8 @@
   $effect(() => { const i = setInterval(() => (clock = pragueNow()), 1000); return () => clearInterval(i); });
 
   const leave = $derived(leaveAt(it, boardDelay));
-  const left = $derived(secondsUntil(it, leave, clock.date, clock.sec));
-  const show = $derived(left <= 2 * 3600 && left >= -10 * 60);
+  const left = $derived(leave == null ? 0 : secondsUntil(it, leave, clock.date, clock.sec));
+  const show = $derived(leave != null && left <= 2 * 3600 && left >= -10 * 60);
 
   const canNotify = typeof Notification !== 'undefined';
   let remind = $state(false);
@@ -36,7 +36,7 @@
 {#if show}
   <div class="leave" role="timer" aria-live="polite">
     <span class="msg">
-      {#if left > 60}⏱ {$t('leaveIn', { n: Math.ceil(left / 60), time: formatHM(leave) })}
+      {#if left > 60}⏱ {$t('leaveIn', { n: Math.ceil(left / 60), time: formatHM(leave ?? 0) })}
       {:else if left >= -30}🏃 {$t('leaveNow')}
       {:else}{$t('leaveMissed', { n: Math.round(-left / 60) || 1 })}{/if}
     </span>

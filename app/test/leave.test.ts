@@ -15,8 +15,8 @@ describe('leaveAt', () => {
     expect(leaveAt(it0, [null, null, null])).toBe(H(7, 54));
     expect(leaveAt(it0, [null, 180, null])).toBe(H(7, 57));
   });
-  it('is the planned start without a bus', () => {
-    expect(leaveAt(trip([walk(H(9, 0), H(9, 20))]), [null])).toBe(H(9, 0));
+  it('is null without a bus to catch', () => {
+    expect(leaveAt(trip([walk(H(9, 0), H(9, 20))]), [null])).toBeNull();
   });
   it('counts across midnight', () => {
     expect(secondsUntil(trip([walk(H(0, 5), H(0, 9))]), H(0, 5), '20261018', H(23, 55))).toBe(600);
