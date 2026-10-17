@@ -33,6 +33,11 @@ const cs = {
   stopsCount: '{n} zast.',
   transferRisk: 'Přestup může ujet',
   noLive: 'bez živých dat',
+  onTime: 'včas',
+  arrival: 'cíl',
+  platform: 'nástupiště {p}',
+  walkShort: 'pěšky',
+  bikeShort: 'kolo',
   staleData: 'Jízdní řády mohou být neaktuální',
   offline: 'Jste offline — jízdní řády fungují, živá data ne',
   departures: 'Odjezdy',
@@ -89,6 +94,9 @@ const cs = {
   loadFailed: 'Data se nepodařilo načíst.',
   retry: 'Zkusit znovu',
   back: 'Zpět',
+  editSearch: 'Upravit hledání',
+  nearbyStops: 'Zastávky v okolí',
+  language: 'Jazyk',
   planning: 'Hledám spojení…',
   attribution: 'Data: ROPID/PID · © přispěvatelé OpenStreetMap · Photon · Nextbike',
   langToggle: 'English',
@@ -180,6 +188,11 @@ const en: Record<Key, string> = {
   stopsCount: '{n} stops',
   transferRisk: 'Connection at risk',
   noLive: 'no live data',
+  onTime: 'on time',
+  arrival: 'arrival',
+  platform: 'platform {p}',
+  walkShort: 'walk',
+  bikeShort: 'bike',
   staleData: 'Timetables may be out of date',
   offline: 'You are offline — timetables work, live data does not',
   departures: 'Departures',
@@ -238,6 +251,9 @@ const en: Record<Key, string> = {
   back: 'Back',
   planning: 'Finding connections…',
   attribution: 'Data: ROPID/PID · © OpenStreetMap contributors · Photon · Nextbike',
+  editSearch: 'Edit search',
+  nearbyStops: 'Stops near you',
+  language: 'Language',
   langToggle: 'Čeština',
   layerBikes: 'Nextbike stations',
   layers: 'Map layers',
@@ -296,7 +312,13 @@ const en: Record<Key, string> = {
 export type Lang = 'cs' | 'en';
 export const dict: Record<Lang, Record<Key, string>> = { cs, en };
 
-export const lang = writable<Lang>(load<Lang>('rb.lang', 'cs') === 'en' ? 'en' : 'cs');
+/** first visit: Czech for Czech/Slovak browsers, English otherwise; afterwards the saved choice (About page) */
+const browserLang = (): Lang => {
+  const langs = typeof navigator !== 'undefined' ? (navigator.languages?.length ? navigator.languages : [navigator.language]) : [];
+  return langs.some((l) => /^(cs|sk)\b/i.test(l ?? '')) || !langs.length ? 'cs' : 'en';
+};
+const saved = load<Lang | null>('rb.lang', null);
+export const lang = writable<Lang>(saved === 'en' || saved === 'cs' ? saved : browserLang());
 lang.subscribe((v) => {
   save('rb.lang', v);
   if (typeof document !== 'undefined') document.documentElement.lang = v;

@@ -6,9 +6,12 @@
   import { t } from '../lib/i18n';
   import LineBadge from './LineBadge.svelte';
   import DelayBadge from './DelayBadge.svelte';
+  import Icon from './Icon.svelte';
+  import { legChain } from '../lib/chain';
 
   let { it, stops, today, onclick }: { it: Itinerary; stops: StopRec[]; today: string; onclick: () => void } = $props();
   const firstBus = $derived(it.legs.find((l) => l.kind === 'bus'));
+  const chain = $derived(legChain(it.legs));
   const risk = $derived(overlayDelays(it, $delays).transferRisk.some(Boolean));
   const mins = (a: number, b: number) => Math.max(1, Math.round((b - a) / 60));
   const dayLabel = $derived(it.date === today ? '' : it.date === addDays(today, 1) ? $t('tomorrow') : `${+it.date.slice(6, 8)}. ${+it.date.slice(4, 6)}.`);
@@ -22,13 +25,12 @@
     <span class="spacer"></span>
     {#if it.free}<span class="tag-free">{$t('free')}</span>{:else}<span class="tag-paid">{$t('paid')}</span>{/if}
   </div>
-  {#if risk}<div class="risk small">⚠️ {$t('transferRisk')}</div>{/if}
+  {#if risk}<div class="risk small"><Icon name="warn" size={16} /> {$t('transferRisk')}</div>{/if}
   <div class="chain">
-    {#each it.legs as l, i (i)}
+    {#each chain as c, i (i)}
       {#if i}<span class="sep" aria-hidden="true">›</span>{/if}
-      {#if l.kind === 'bus'}<LineBadge routeId={l.routeId} />
-      {:else if l.kind === 'walk'}<span class="walk">🚶{mins(l.depart, l.arrive)}</span>
-      {:else}<span class="bike">🚲{mins(l.depart, l.arrive)}</span>{/if}
+      {#if c.kind === 'bus'}<LineBadge routeId={c.routeId} />
+      {:else}<span class="walk" aria-label={`${c.kind === 'walk' ? $t('walkShort') : $t('bikeShort')} ${c.min} min`}><Icon name={c.kind} size={16} />{c.min}</span>{/if}
     {/each}
   </div>
   {#if firstBus && firstBus.kind === 'bus'}
@@ -48,5 +50,5 @@
   .chain { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .risk { color: var(--bad); font-weight: 700; }
   .sep { color: var(--muted); }
-  .walk, .bike { font-size: 0.9rem; }
+  .walk { display: inline-flex; align-items: center; gap: 2px; font-size: 0.9rem; color: var(--muted); font-weight: 600; }
 </style>

@@ -1,7 +1,8 @@
 <script lang="ts">
   import type { AppData } from '../lib/data';
   import { navigate } from '../lib/nav';
-  import { t } from '../lib/i18n';
+  import { t, lang } from '../lib/i18n';
+  import Icon from '../components/Icon.svelte';
   import { tripOverlay, highlightLine, planMarkers } from '../lib/ui';
 
   let { data }: { data: AppData } = $props();
@@ -15,13 +16,18 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}>←</button>
+  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}><Icon name="back" /></button>
   <h1>{$t('about')}</h1>
+</div>
+
+<div class="seg lang" role="group" aria-label={$t('language')}>
+  <button aria-pressed={$lang === 'cs'} onclick={() => lang.set('cs')}>Čeština</button>
+  <button aria-pressed={$lang === 'en'} onclick={() => lang.set('en')}>English</button>
 </div>
 
 <div class="about">
   <p>{$t('aboutIntro')}</p>
-  <p>♿ {$t('aboutAccess')}</p>
+  <p><Icon name="access" /> {$t('aboutAccess')}</p>
   <p>{$t('aboutFree')} <a href="https://www.ricany.cz" target="_blank" rel="noopener">ricany.cz</a>.</p>
   <p>{$t('aboutData')}</p>
   <p>{$t('aboutUnofficial')}</p>
@@ -30,6 +36,7 @@
 </div>
 
 <style>
+  .lang { margin: 4px 0 8px; }
   .about p { line-height: 1.5; }
   .about a { color: var(--accent); }
   .src { display: inline-flex; align-items: center; min-height: 44px; }

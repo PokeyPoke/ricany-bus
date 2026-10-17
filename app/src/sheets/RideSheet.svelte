@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
   import { addDays, formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { directRides } from '../router/directRides';
@@ -48,7 +49,7 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}>←</button>
+  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}><Icon name="back" /></button>
   {#if line && gFrom && gTo}
     <LineBadge routeId={line.routeId} /><h1 class="ln">{gFrom.name} → {gTo.name}</h1>
   {:else}<h1>{$t('stopNotFound')}</h1>{/if}

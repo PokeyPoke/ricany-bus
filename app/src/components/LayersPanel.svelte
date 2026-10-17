@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './Icon.svelte';
   import { bikesLayerOn, poiLayerOn, buildingsLayerOn } from '../lib/ui';
   import { t } from '../lib/i18n';
   let open = $state(false);
@@ -18,7 +19,7 @@
 {/snippet}
 
 <div class="layers" bind:this={root}>
-  <button class="btn" aria-label={$t('layers')} aria-expanded={open} onclick={() => (open = !open)}>🗂</button>
+  <button class="btn" aria-label={$t('layers')} aria-expanded={open} onclick={() => (open = !open)}><Icon name="layers" size={22} /></button>
   {#if open}
     <div class="pop" role="group" aria-label={$t('layers')}>
       {@render sw($t('layerBikes'), $bikesLayerOn, () => bikesLayerOn.update((v) => !v))}
@@ -29,8 +30,8 @@
 </div>
 
 <style>
-  .layers { position: absolute; right: 10px; top: 140px; z-index: 4; }
-  .btn { width: 44px; height: 44px; border-radius: 10px; background: var(--bg); box-shadow: var(--shadow); font-size: 1.2rem; }
+  .layers { position: absolute; right: 10px; top: 160px; z-index: 4; }
+  .btn { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
   .pop { position: absolute; right: 52px; top: 0; background: var(--bg); box-shadow: var(--shadow); border-radius: 12px; padding: 4px; min-width: 210px; }
   .sw { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 0 10px; text-align: left; border-radius: 8px; }
   .knob { width: 34px; height: 20px; border-radius: 10px; background: #b8c0c8; position: relative; flex: none; transition: background 0.15s; }

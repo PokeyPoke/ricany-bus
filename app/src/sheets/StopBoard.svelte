@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
+  import Platform from '../components/Platform.svelte';
   import { addDays, formatHM, LINE_ORDER, type FreeRouteId } from '@rb/shared';
   import { streetGraph, useStreets, nearestOnFoot } from '../lib/streets';
   import type { AppData } from '../lib/data';
@@ -78,13 +80,13 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}>←</button>
-  <h1>{stop ? `🚏 ${stop.name}` : $t('stopNotFound')}</h1>
+  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}><Icon name="back" /></button>
+  <h1>{#if stop}<Icon name="stop" /> {stop.name}{:else}{$t('stopNotFound')}{/if}</h1>
 </div>
 
 {#if stop}
   {@const barriers = group.filter((i) => data.stops[i].access === 2).map((i) => data.stops[i].platform).filter(Boolean)}
-  {#if barriers.length}<p class="small barrier">♿ {$t('stopNotAccessible', { p: barriers.join(', ') })}</p>{/if}
+  {#if barriers.length}<p class="small barrier"><Icon name="access" size={16} /> {$t('stopNotAccessible', { p: barriers.join(', ') })}</p>{/if}
   <div class="chips">
     {#each lines as l (l)}
       <button class="line" aria-label={`${$t('lines')} ${l}`} onclick={() => openLine(l)}><LineBadge routeId={l} /></button>
@@ -102,7 +104,7 @@
       <li class="dep">
         <span class="time">{formatHM(d.dep)}</span>
         <LineBadge routeId={d.routeId} />
-        <span class="head">{d.headsign}{#if data.stops[d.stop].platform}<small class="muted"> · {data.stops[d.stop].platform}</small>{/if}</span>
+        <span class="head">{d.headsign}<Platform p={data.stops[d.stop].platform} /></span>
         <span class="when">{whenLabel(d.dep, delay, d.day)}{#if d.day === 0}<DelayBadge sec={delay} live={$delaysOk} />{/if}</span>
       </li>
     {/each}
@@ -111,7 +113,7 @@
   {#if nearestBike}
     <h2>{$t('nearestBike')}</h2>
     <button class="row bike" onclick={() => navigate({ name: 'bike', uid: nearestBike.b.uid })}>
-      🚲 {nearestBike.b.name} · {$t('bikesAvailable', { n: nearestBike.b.bikes })} · {nearestBike.m} m
+      <Icon name="bike" /> {nearestBike.b.name} · {$t('bikesAvailable', { n: nearestBike.b.bikes })} · {nearestBike.m} m
     </button>
     {#if staleMin != null}<p class="warn small" role="status">{$t('bikesStale', { n: staleMin })}</p>{/if}
   {/if}

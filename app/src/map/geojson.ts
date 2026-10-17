@@ -63,10 +63,12 @@ export function arrowOffset(disp: [number, number], bearing: number, mapBearing 
 }
 
 /** offsets: screen-pixel displacement per tripId (from spreadOffsets). */
-/** `waiting`: trip ids of buses whose trip has not started yet (drawn faded) */
-export const busesGeoJson = (vehicles: Vehicle[], offsets: Record<string, [number, number]> = {}, mapBearing = 0, waiting: ReadonlySet<string> = new Set()) => fc(vehicles.map((v) => {
+/** `waiting`: trip ids of buses whose trip has not started yet (drawn faded).
+ * `scale`: the zoom-dependent icon size (busScale); maplibre multiplies icon offsets by it, so pixel offsets are divided here. */
+export const busesGeoJson = (vehicles: Vehicle[], offsets: Record<string, [number, number]> = {}, mapBearing = 0, waiting: ReadonlySet<string> = new Set(), scale = 1) => fc(vehicles.map((v) => {
   const s = LINE_STYLE[v.routeId];
-  const d = offsets[v.tripId] ?? [0, 0];
+  const px = offsets[v.tripId] ?? [0, 0];
+  const d: [number, number] = [px[0] / scale, px[1] / scale];
   const bearing = v.bearing ?? -1;
   return point(v.lon, v.lat, {
     tripId: v.tripId, routeId: v.routeId, number: s.number, color: s.color, text: s.text, bearing, waiting: waiting.has(v.tripId) ? 1 : 0,

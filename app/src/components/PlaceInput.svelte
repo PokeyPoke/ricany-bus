@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon, { type IconName } from './Icon.svelte';
   import { get } from 'svelte/store';
   import type { StopRec } from '@rb/shared';
   import type { PlaceRef } from '../router/types';
@@ -33,15 +34,15 @@
     query ? $savedPlaces.filter((s) => norm(s.label).includes(norm(query))) : $savedPlaces
   );
 
-  type Item = { key: string; icon: string; text: string; detail?: string; run: () => void };
+  type Item = { key: string; icon?: string; svg?: IconName; text: string; detail?: string; run: () => void };
   const items = $derived.by((): Item[] => {
     const actions: Item[] = [
-      { key: 'me', icon: '📍', text: $t('myLocation'), run: useMe },
-      { key: 'pick', icon: '📌', text: $t('pickOnMap'), run: pick }
+      { key: 'me', svg: 'locate', text: $t('myLocation'), run: useMe },
+      { key: 'pick', svg: 'pin', text: $t('pickOnMap'), run: pick }
     ];
     const found: Item[] = [
       ...savedMatches.map((s): Item => ({ key: `s-${s.id}`, icon: s.icon, text: s.label, run: () => choose({ lat: s.lat, lon: s.lon, name: s.label }) })),
-      ...hits.map((h): Item => ({ key: `${h.kind}-${h.name}-${h.lat.toFixed(5)},${h.lon.toFixed(5)}`, icon: h.kind === 'stop' ? '🚏' : '📌', text: h.name, detail: h.detail, run: () => choose(h) }))
+      ...hits.map((h): Item => ({ key: `${h.kind}-${h.name}-${h.lat.toFixed(5)},${h.lon.toFixed(5)}`, svg: h.kind === 'stop' ? 'stop' : 'pin', text: h.name, detail: h.detail, run: () => choose(h) }))
     ];
     return query ? [...found, ...actions] : [...actions, ...found];
   });
@@ -141,7 +142,7 @@
         <!-- svelte-ignore a11y_click_events_have_key_events -->
         <li id={optId(i)} role="option" aria-selected={i === active} class="row" class:active={i === active}
           onmousedown={(e) => e.preventDefault()} onclick={it.run}>
-          <span aria-hidden="true">{it.icon}</span><span>{it.text}{#if it.detail} <small class="muted">{it.detail}</small>{/if}</span>
+          <span class="ico" aria-hidden="true">{#if it.svg}<Icon name={it.svg} size={18} />{:else}{it.icon}{/if}</span><span>{it.text}{#if it.detail} <small class="muted">{it.detail}</small>{/if}</span>
         </li>
       {/each}
     </ul>

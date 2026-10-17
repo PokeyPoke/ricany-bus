@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './Icon.svelte';
   import { formatHM, pragueNow } from '@rb/shared';
   import type { Itinerary } from '../router/types';
   import { leaveAt, secondsUntil } from '../lib/leave';
@@ -36,12 +37,12 @@
 {#if show}
   <div class="leave" role="timer" aria-live="polite">
     <span class="msg">
-      {#if left > 60}⏱ {$t('leaveIn', { n: Math.ceil(left / 60), time: formatHM(leave ?? 0) })}
-      {:else if left >= -30}🏃 {$t('leaveNow')}
+      {#if left > 60}<Icon name="clock" /> {$t('leaveIn', { n: Math.ceil(left / 60), time: formatHM(leave ?? 0) })}
+      {:else if left >= -30}<Icon name="run" /> {$t('leaveNow')}
       {:else}{$t('leaveMissed', { n: Math.round(-left / 60) || 1 })}{/if}
     </span>
     {#if left > REMIND_SEC}
-      <button class="secondary remind" aria-pressed={remind} onclick={toggle}>🔔 {remind ? $t('remindOn') : $t('remindMe')}</button>
+      <button class="secondary remind" aria-pressed={remind} onclick={toggle}><Icon name="bell" size={18} /> {remind ? $t('remindOn') : $t('remindMe')}</button>
     {/if}
   </div>
   {#if remind && left > REMIND_SEC}<p class="small muted">{$t('remindHint')}</p>{/if}

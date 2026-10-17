@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
+  import Platform from '../components/Platform.svelte';
   import { untrack } from 'svelte';
   import { formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
@@ -30,7 +32,6 @@
   }
   const ov = $derived(overlayDelays(it, $delays));
   const mins = (a: number, b: number) => Math.max(1, Math.round((b - a) / 60));
-  const stopLabel = (i: number) => `${data.stops[i].name}${data.stops[i].platform ? ` (${data.stops[i].platform})` : ''}`;
 
   let toast = $state('');
   let manualUrl = $state('');
@@ -60,7 +61,7 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={onBack}>←</button>
+  <button class="back" aria-label={$t('back')} onclick={onBack}><Icon name="back" /></button>
   <h1>{formatHM(it.depart)} – {formatHM(it.arrive)}</h1>
   {#if it.free}<span class="tag-free">{$t('free')}</span>{:else}<span class="tag-paid">{$t('paid')}</span>{/if}
   {#if !$delaysOk}<DelayBadge sec={null} live={false} />{/if}
@@ -81,29 +82,29 @@
       <div class="time">{formatHM(l.depart)}{#if l.kind === 'bus' && $delaysOk}<DelayBadge sec={ov.boardDelay[i]} live={$delaysOk} />{/if}</div>
       <div class="body">
         {#if l.kind === 'walk'}
-          <div>🚶 {$t('walkFor', { n: mins(l.depart, l.arrive), m: l.meters })}</div>
+          <div><Icon name="walk" /> {$t('walkFor', { n: mins(l.depart, l.arrive), m: l.meters })}</div>
           <div class="small muted">→ {l.to.name}</div>
         {:else if l.kind === 'bike'}
-          <div>🚲 {$t('bikeFor', { n: mins(l.depart, l.arrive), m: l.meters })} <span class="tag-paid">{$t('paid')}</span></div>
+          <div><Icon name="bike" /> {$t('bikeFor', { n: mins(l.depart, l.arrive), m: l.meters })} <span class="tag-paid">{$t('paid')}</span></div>
           <div class="small muted">{l.from.name} → {l.to.name}</div>
           <div class="small muted">{$t('bikesNow', { n: l.from.bikes })}</div>
         {:else}
-          {#if ov.transferRisk[i]}<p class="risk" role="status">⚠️ {$t('transferRisk')}</p>{/if}
+          {#if ov.transferRisk[i]}<p class="risk" role="status"><Icon name="warn" size={16} /> {$t('transferRisk')}</p>{/if}
           <div class="line"><LineBadge routeId={l.routeId} /> <span>{$t('toward', { h: l.headsign })}</span></div>
-          <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.from].id })}>{stopLabel(l.from)}</button>
-          {#if data.stops[l.from].access === 2}<div class="small barrier">♿ {$t('platformNotAccessible')}</div>{/if}
+          <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.from].id })}>{data.stops[l.from].name}<Platform p={data.stops[l.from].platform} /></button>
+          {#if data.stops[l.from].access === 2}<div class="small barrier"><Icon name="access" size={16} /> {$t('platformNotAccessible')}</div>{/if}
           <div class="small muted">{$t('stopsCount', { n: l.stopCount })}</div>
-          {#if liveLine(l)}<div class="small live">🚌 {liveLine(l)}</div>{/if}
+          {#if liveLine(l)}<div class="small live"><Icon name="bus" size={16} /> {liveLine(l)}</div>{/if}
           <div class="arr">
             {formatHM(l.arrive)}{#if $delaysOk}<DelayBadge sec={ov.alightDelay[i]} live={$delaysOk} />{/if}
-            <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.to].id })}>{stopLabel(l.to)}</button>
+            <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.to].id })}>{data.stops[l.to].name}<Platform p={data.stops[l.to].platform} /></button>
           </div>
-          {#if data.stops[l.to].access === 2}<div class="small barrier">♿ {$t('platformNotAccessible')}</div>{/if}
+          {#if data.stops[l.to].access === 2}<div class="small barrier"><Icon name="access" size={16} /> {$t('platformNotAccessible')}</div>{/if}
         {/if}
       </div>
     </li>
   {/each}
-  <li class="leg end"><div class="time">{formatHM(it.arrive)}</div><div class="body">🏁</div></li>
+  <li class="leg end"><div class="time">{formatHM(it.arrive)}</div><div class="body"><Icon name="flag" label={$t('arrival')} /></div></li>
 </ol>
 
 <style>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
+  import Platform from '../components/Platform.svelte';
   import type { AppData } from '../lib/data';
   import { sampleDate, stopTimetable, dayTypeOf, type DayType } from '../router/timetable';
   import { now, focusPoints, highlightLine, tripOverlay, hoverGroup, lineSelection } from '../lib/ui';
@@ -60,10 +62,14 @@
     void selNumber; void selDir; // line or direction changed: drop any stale hover highlight
     return () => hoverGroup.set(null);
   });
-  // selection (list tap or map marker tap): keep the selected row visible
+  // selection (list tap or map marker tap): keep the selected row visible — but not on opening the line,
+  // which would scroll the header, direction buttons and timetable out of view
+  let opened = false;
   $effect(() => {
     if (selIdx < 0 || !listEl) return;
-    listEl.querySelector<HTMLElement>(`li[data-gi="${data.stops[selIdx].group}"]`)?.scrollIntoView({ block: 'nearest' });
+    const row = listEl.querySelector<HTMLElement>(`li[data-gi="${data.stops[selIdx].group}"]`);
+    if (!opened) { opened = true; return; }
+    row?.scrollIntoView({ block: 'nearest' });
   });
   $effect(() => {
     const g = $hoverGroup;
@@ -84,7 +90,7 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}>←</button>
+  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}><Icon name="back" /></button>
   {#if line}<LineBadge routeId={line.routeId} /><h1 class="ln">{line.longName}</h1>{:else}<h1>{$t('lineNotFound')}</h1>{/if}
 </div>
 
@@ -106,7 +112,7 @@
   {#if table.length}
     <div class="tt" role="table">
       {#each table as [h, mins] (h)}
-        <div class="tt-row" role="row"><span class="h" role="rowheader">{h}</span><span class="m" role="cell">{mins.map((m) => String(m).padStart(2, '0')).join('  ')}</span></div>
+        <div class="tt-row" role="row"><span class="h" role="rowheader">{h}</span><span class="m" role="cell">{mins.map((m) => String(m).padStart(2, '0')).join(' ')}</span></div>
       {/each}
     </div>
   {:else}
@@ -118,7 +124,7 @@
     {#each direction.stops as i (i)}
       <li data-gi={data.stops[i].group}>
         <button class:sel={i === selIdx} class:hover={$hoverGroup === data.stops[i].group} aria-current={i === selIdx ? 'true' : undefined}
-          onpointerenter={(e) => enter(e, data.stops[i].group)} onpointerleave={leave} onclick={() => setStop(i)}>{data.stops[i].name}{#if data.stops[i].platform}<small class="muted"> · {data.stops[i].platform}</small>{/if}</button>
+          onpointerenter={(e) => enter(e, data.stops[i].group)} onpointerleave={leave} onclick={() => setStop(i)}>{data.stops[i].name}<Platform p={data.stops[i].platform} /></button>
       </li>
     {/each}
   </ol>
@@ -127,10 +133,11 @@
 <style>
   .ln { font-size: 1rem; }
   .seg { margin-top: 8px; }
-  .tt { display: grid; gap: 2px; margin-top: 8px; font-variant-numeric: tabular-nums; }
-  .tt-row { display: grid; grid-template-columns: 36px 1fr; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line); }
-  .h { font-weight: 800; text-align: right; }
-  .m { white-space: pre-wrap; }
+  /* compact: one small cell per hour (hour on top, minutes below), wrapping — a whole day fits on one screen */
+  .tt { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .tt-row { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: 10px; background: var(--chip); }
+  .h { font-weight: 800; }
+  .m { font-size: 0.9rem; color: var(--muted); }
   .stops { margin: 0; padding-left: 22px; }
   .stops button { min-height: 44px; text-align: left; }
   .where { margin-top: 6px; }

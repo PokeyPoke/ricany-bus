@@ -66,15 +66,15 @@ function scaleOpacity(map: maplibregl.Map, id: string, k: number, prop = 'fill-o
 }
 
 /** Idempotent per style instance (a fresh setStyle gets curated again); tolerant of missing layers / sources. */
-export function declutter(map: maplibregl.Map): void {
+export function declutter(map: maplibregl.Map, dark = false): void {
   const style = (map as unknown as { style?: object }).style;
   if (style && done.has(style)) return;
   if (style) done.add(style);
   const has = (id: string) => !!map.getLayer(id);
   for (const id of HIDE_LAYERS) if (has(id)) map.setLayoutProperty(id, 'visibility', 'none');
   if (has('building')) {
-    map.setPaintProperty('building', 'fill-opacity', 0.25);
-    map.setPaintProperty('building', 'fill-outline-color', '#b9b4aa');
+    map.setPaintProperty('building', 'fill-opacity', dark ? 0.5 : 0.25);
+    map.setPaintProperty('building', 'fill-outline-color', dark ? '#2c3846' : '#b9b4aa');
   }
   for (const id of ['landuse_residential', 'park', 'landcover_wood', 'landcover_grass', 'landcover_wetland', 'landcover_sand', 'landcover_ice']) if (has(id)) scaleOpacity(map, id, 0.5);
   if (has('highway-name-minor')) map.setLayerZoomRange('highway-name-minor', 16, 24);
@@ -90,7 +90,7 @@ export function declutter(map: maplibregl.Map): void {
       'text-field': ['step', ['zoom'], '', 16, ['get', 'name']],
       'text-font': FONT, 'text-size': 11, 'text-anchor': 'top', 'text-offset': [0, 0.8], 'text-optional': true, 'text-max-width': 7,
     },
-    paint: { 'text-color': '#2b3640', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
+    paint: dark ? { 'text-color': '#c9d3dd', 'text-halo-color': '#10161d', 'text-halo-width': 1.5 } : { 'text-color': '#2b3640', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 },
   };
   map.addLayer({ ...base, id: 'places', minzoom: 14, filter: poiFilter(false) } as never, before);
   map.addLayer({ ...base, id: 'places-detail', minzoom: 16, filter: poiFilter(true) } as never, before);
