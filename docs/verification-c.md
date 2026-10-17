@@ -45,3 +45,19 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 ## Lines sharing a road (2026-10-17)
 - Lines that run along the same road are drawn side by side (transit-map style) instead of on top of each other: each line's route is sampled every 10 m, lines within 15 m and parallel share the road, slots follow line order 1, 2, 3, 7, 9, 91, 92 and the side is fixed geographically so both directions of a line sit on the same side (`app/src/map/parallel.ts`, 68 ms on load for all lines). Offset and width scale with zoom so neighbouring lines just touch.
 - A selected line (line view, map tap) is drawn on top along its true route with a white casing; the others fade to 20 %.
+
+## UI review batch (items 1–13)
+
+- One search entry ("Kam jedete?" in the top bar); the home button is gone.
+- Planner collapses to an `A → B · time` summary once both ends are set (tap to edit, "Hotovo" to collapse).
+- On-time departures show a green dot instead of "±0 min".
+- Every screen opens at its top (BottomSheet resets scroll per route; LineView no longer scrolls on open).
+- Dark basemap (OpenFreeMap `dark`) and dark map controls follow `prefers-color-scheme`.
+- Locate / layers buttons sit below the zoom control.
+- Bus icons scale 0.6 → 1 between zoom 12 and 15 (offsets divided by the scale).
+- Back-to-back walks are merged in result cards (`lib/chain.ts`).
+- Platform letters are outlined chips (`components/Platform.svelte`).
+- Line timetable is a grid of hour cells.
+- Emoji UI icons replaced by `components/Icon.svelte` SVGs (users' own saved-place emoji kept).
+- Language: auto-detected from the browser on first visit (cs/sk → Czech, else English); switch on the About page.
+- Empty "Kam" field offers saved places, recent searches and nearby stops.

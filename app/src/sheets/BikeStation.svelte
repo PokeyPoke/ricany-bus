@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
   import { streetGraph, useStreets, nearestOnFoot } from '../lib/streets';
   import type { AppData } from '../lib/data';
   import { bikes, bikesOk, bikesAt, bikesStaleMin, useBikes } from '../lib/live';
@@ -29,8 +30,8 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}>←</button>
-  <h1>🚲 {st?.name ?? $t('bikes')}</h1>
+  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}><Icon name="back" /></button>
+  <h1><Icon name="bike" /> {st?.name ?? $t('bikes')}</h1>
 </div>
 
 {#if st}
@@ -42,7 +43,7 @@
     <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', from: here() })}>{$t('planFromHere')}</button>
     <button class="secondary" onclick={() => navigate({ name: 'plan', mode: 'now', to: here() })}>{$t('planToHere')}</button>
   </div>
-  <h2>🚏</h2>
+  <h2><Icon name="stop" /> {$t('stops')}</h2>
   <ul class="list">
     {#each nearStops as x (x.s.id)}<li><button class="row" onclick={() => navigate({ name: 'stop', stopId: x.s.id })}>{x.s.name} · {x.m} m</button></li>{/each}
   </ul>

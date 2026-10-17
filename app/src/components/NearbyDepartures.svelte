@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from './Icon.svelte';
+  import Platform from './Platform.svelte';
   import { formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { netFor } from '../lib/network';
@@ -44,13 +46,13 @@
 
 <h2>{$t('nearby')}</h2>
 {#if !$userPos}
-  <button class="secondary near-btn" onclick={locate} aria-busy={state === 'locating'}>📍 {state === 'locating' ? $t('locating') : $t('showNearby')}</button>
+  <button class="secondary near-btn" onclick={locate} aria-busy={state === 'locating'}><Icon name="locate" /> {state === 'locating' ? $t('locating') : $t('showNearby')}</button>
   {#if state === 'denied'}<p class="small muted">{$t('locationDenied')}</p>{:else if state === 'failed'}<p class="small muted">{$t('locationFailed')}</p>{/if}
 {:else if !boards.length}
   <p class="muted">{$t('noStopNearby')}</p>
 {:else}
   {#each boards as b (b.g.id)}
-    <button class="stop-head" onclick={() => navigate({ name: 'stop', stopId: b.g.id })}>🚏 {b.g.name} <span class="muted small">· 🚶 {b.walkMin} min</span></button>
+    <button class="stop-head" onclick={() => navigate({ name: 'stop', stopId: b.g.id })}><Icon name="stop" /> {b.g.name} <span class="muted small">· <Icon name="walk" size={15} /> {b.walkMin} min</span></button>
     {#if b.deps.length}
       <ul class="list">
         {#each b.deps as d (`${d.tripId}-${d.serviceDate}-${d.stop}`)}
@@ -58,7 +60,7 @@
           <li class="dep">
             <span class="time">{formatHM(d.dep)}</span>
             <LineBadge routeId={d.routeId} />
-            <span class="head">{d.headsign}</span>
+            <span class="head">{d.headsign}<Platform p={data.stops[d.stop].platform} /></span>
             <span class="when">{inMin(d.dep, delay)}<DelayBadge sec={delay} live={$delaysOk} /></span>
           </li>
         {/each}

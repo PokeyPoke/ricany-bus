@@ -6,16 +6,17 @@
   import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
   import { RIC_CENTER, LINE_STYLE, type Vehicle } from '@rb/shared';
   import type { AppData } from '../lib/data';
-  import { MAP_STYLE } from '../config';
+  import { MAP_STYLE, MAP_STYLE_DARK } from '../config';
   import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles, waitingStart } from '../lib/live';
   import { netFor } from '../lib/network';
   import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
   import { navigate, route } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
-  import { addLayers } from './layers';
+  import { addLayers, busScale } from './layers';
   import { declutter, poiCategory } from './basemap';
   import LayersPanel from '../components/LayersPanel.svelte';
+  import Icon from '../components/Icon.svelte';
   import { bikesGeoJson, busesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
   import { spreadOffsets } from './spread';
   import { BusMotion } from './motion';
@@ -88,7 +89,7 @@
     let best: string | null = null, bd = Infinity;
     for (const b of busCentres) {
       const dx = Math.abs(b.x - px), dy = Math.abs(b.y - py);
-      if (dx > 24 + 6 || dy > 27 + 6) continue; // icon is 48x54 plus a little finger slack
+      if (dx > 24 * busScaleNow + 6 || dy > 27 * busScaleNow + 6) continue; // icon is 48x54 at full size, plus a little finger slack
       const d = dx * dx + dy * dy;
       if (d < bd) { bd = d; best = b.tripId; }
     }
@@ -96,6 +97,7 @@
   }
 
   let lastVehicles: Vehicle[] = [];
+  let busScaleNow = 1;
   /** buses on layover before their trip's first departure, drawn faded */
   let waitingTrips = new Set<string>();
   /** project, fan out overlapping buses, push to the buses + leader sources */
@@ -104,9 +106,10 @@
     const m = map;
     if (!m || !m.getSource('buses')) return;
     const proj = vehicles.map((v) => ({ v, pt: m.project([v.lon, v.lat]) }));
-    const offs = spreadOffsets(proj.map(({ v, pt }) => ({ id: v.tripId, x: pt.x, y: pt.y })), 46, 40);
+    busScaleNow = busScale(m.getZoom());
+    const offs = spreadOffsets(proj.map(({ v, pt }) => ({ id: v.tripId, x: pt.x, y: pt.y })), 46 * busScaleNow, 40 * busScaleNow);
     busCentres = proj.map(({ v, pt }) => { const o = offs[v.tripId] ?? [0, 0]; return { tripId: v.tripId, x: pt.x + o[0], y: pt.y + o[1] }; });
-    setData('buses', busesGeoJson(vehicles, offs, m.getBearing(), waitingTrips));
+    setData('buses', busesGeoJson(vehicles, offs, m.getBearing(), waitingTrips, busScaleNow));
     setData('buses-pulse', {
       type: 'FeatureCollection',
       features: proj.map(({ v, pt }) => {
@@ -162,7 +165,12 @@
   }
 
   onMount(() => {
-    const m = new maplibregl.Map({ container: el, style: MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
+    // dark phone setting → dark basemap; follows the setting live (our layers are re-added on every style.load)
+    const darkQ = matchMedia('(prefers-color-scheme: dark)');
+    let dark = darkQ.matches;
+    const onScheme = (e: MediaQueryListEvent) => { dark = e.matches; if (!fellBack) m.setStyle(dark ? MAP_STYLE_DARK : MAP_STYLE); };
+    darkQ.addEventListener('change', onScheme);
+    const m = new maplibregl.Map({ container: el, style: dark ? MAP_STYLE_DARK : MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
     map = m;
     if (import.meta.env.MODE !== 'production' || new URLSearchParams(location.search).has('e2e')) (window as unknown as { __rbMap?: maplibregl.Map }).__rbMap = m;
     m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -176,8 +184,8 @@
     m.on('style.load', () => {
       styled = true;
       const warn = (what: string, err: unknown) => { if (!warned) { warned = true; console.warn(`${what} failed`, err); } };
-      try { addLayers(m, data); } catch (err) { warn('map layer setup', err); }
-      try { declutter(m); } catch (err) { warn('basemap declutter', err); }
+      try { addLayers(m, data, dark); } catch (err) { warn('map layer setup', err); }
+      try { declutter(m, dark); } catch (err) { warn('basemap declutter', err); }
       gen++;
     });
     m.on('moveend', () => refreshBuses());
@@ -193,7 +201,7 @@
       m.getCanvas().style.cursor = get(pickTarget) ? 'crosshair' : h || busHit(e.point.x, e.point.y) || cur(['bikes', 'places', 'places-detail', 'lines']).length ? 'pointer' : '';
     });
     m.on('mouseout', () => hoverGroup.set(null));
-    return () => { clearTimeout(timer); popup?.remove(); hoverGroup.set(null); m.remove(); map = null; };
+    return () => { clearTimeout(timer); darkQ.removeEventListener('change', onScheme); popup?.remove(); hoverGroup.set(null); m.remove(); map = null; };
   });
 
   let hovered: number | null = null;
@@ -310,13 +318,22 @@
 
 <div class="map" bind:this={el}></div>
 {#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>{/if}
-<button class="locate" aria-label={locating ? $t('locating') : $t('locate')} aria-busy={locating} onclick={locate}>{locating ? '⏳' : '📍'}</button>
+<button class="locate" aria-label={locating ? $t('locating') : $t('locate')} aria-busy={locating} onclick={locate}>{#if locating}<span class="spin"></span>{:else}<Icon name="locate" size={22} />{/if}</button>
 <LayersPanel />
 
 <style>
   .map { position: absolute; inset: 0; }
   .note { position: absolute; left: 10px; right: 64px; top: 10px; z-index: 4; background: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; box-shadow: var(--shadow); }
-  .locate { position: absolute; right: 10px; top: 90px; z-index: 4; width: 44px; height: 44px; border-radius: 10px; background: var(--bg); box-shadow: var(--shadow); font-size: 1.2rem; }
+  /* right-hand column: zoom (maplibre, ~88 px on touch screens), then locate, then layers — no overlap */
+  .locate { position: absolute; right: 10px; top: 108px; z-index: 4; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
+  .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  :global(.maplibregl-ctrl-group) { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; }
+  @media (prefers-color-scheme: dark) {
+    :global(.maplibregl-ctrl-group) { background: var(--chip) !important; }
+    :global(.maplibregl-ctrl-group button + button) { border-top-color: var(--line, #2a3542) !important; }
+    :global(.maplibregl-ctrl-group .maplibregl-ctrl-icon) { filter: invert(1); }
+  }
   :global(.rb-marker) { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 14px; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.4); }
   :global(.rb-marker.from) { background: #1d7a35; }
   :global(.rb-marker.to) { background: #c62828; }

@@ -13,8 +13,9 @@ test('home shows search, saved places and the 7 free lines', async ({ page }) =>
 });
 
 test('language switch to English persists across reloads', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./#/about');
   await page.getByRole('button', { name: 'English' }).click();
+  await page.goto('./');
   await expect(page.getByRole('button', { name: /Where to\?/ }).first()).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: /Where to\?/ }).first()).toBeVisible();
@@ -54,7 +55,7 @@ test.describe('with location', () => {
   });  test('home lists departures from the nearest stop', async ({ page }) => {
     await page.goto('./');
     await expect(page.getByRole('heading', { name: 'Odjezdy v okolí' })).toBeVisible();
-    await expect(page.getByRole('button', { name: new RegExp(`🚏 ${a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) })).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(`^ ?${a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) })).toBeVisible();
     await expect(page.locator('.dep').first()).toBeVisible();
   });
 });

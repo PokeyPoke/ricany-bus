@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { t } from '../lib/i18n';
+  import { route } from '../lib/nav';
 
   let { children }: { children: Snippet } = $props();
   const SNAPS = [0.28, 0.55, 0.9];
@@ -9,6 +10,14 @@
   let startY = 0;
   let startH = 0;
   let sheet: HTMLElement;
+  let content: HTMLElement | undefined = $state();
+  // a new screen starts at its top, not at the previous screen's scroll position
+  const screenKey = $derived.by(() => {
+    const r = $route as Record<string, unknown>;
+    // (picking a stop inside a line view keeps its own scroll: LineView reveals the chosen row)
+    return [r.name, r.name === 'line' ? '' : r.stopId, r.number, r.dir, r.tripId, r.uid, r.groupId, r.sel].join('|');
+  });
+  $effect(() => { void screenKey; if (content) content.scrollTop = 0; });
 
   function down(e: PointerEvent) {
     startY = e.clientY;
@@ -39,7 +48,7 @@
     aria-valuetext={$t(['sheetSmall', 'sheetMedium', 'sheetLarge'][snap] as 'sheetSmall')}
     onpointerdown={down} onpointermove={move} onpointerup={up} onpointercancel={up} onkeydown={key}
   ><span></span></div>
-  <div class="content">{@render children()}</div>
+  <div class="content" bind:this={content}>{@render children()}</div>
 </section>
 
 <style>

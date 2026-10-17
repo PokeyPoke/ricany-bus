@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from './Icon.svelte';
   import type { FreeRouteId } from '@rb/shared';
   import { alerts, activeAlerts, useAlerts } from '../lib/live';
   import { now } from '../lib/ui';
@@ -19,7 +20,7 @@
     {#each list as a (a.id)}
       <li>
         <button class="alert" aria-expanded={!!open[a.id]} onclick={() => (open[a.id] = !open[a.id])}>
-          <span class="icon">⚠️</span>
+          <span class="icon"><Icon name="warn" /></span>
           <span class="badges">{#each a.routes as r (r)}<LineBadge routeId={r} />{/each}</span>
           <span class="h">{header(a) || $t('alerts')}</span>
         </button>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
   import { LINE_ORDER, type LineRec } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { navigate } from '../lib/nav';
@@ -27,8 +28,6 @@
   $effect(() => { tripOverlay.set(null); highlightLine.set(null); planMarkers.set({}); });
 </script>
 
-<button class="primary big" onclick={() => navigate({ name: 'plan', mode: 'now' })}>🔍 {$t('whereTo')}</button>
-
 <AlertList />
 
 <NearbyDepartures {data} />
@@ -41,7 +40,7 @@
   {#each $savedPlaces as p (p.id)}
     <span class="saved">
       <button class="chip" onclick={() => navigate({ name: 'plan', mode: 'now', to: { lat: p.lat, lon: p.lon, name: p.label } })}>{p.icon} {p.label}</button>
-      {#if editing}<button class="x" aria-label={`${$t('remove')} ${p.label}`} onclick={() => removePlace(p.id)}>✕</button>{/if}
+      {#if editing}<button class="x" aria-label={`${$t('remove')} ${p.label}`} onclick={() => removePlace(p.id)}><Icon name="close" size={18} /></button>{/if}
     </span>
   {/each}
   {#if !adding}<button class="chip" onclick={() => (adding = true)}>＋ {$t('addPlace')}</button>{/if}
@@ -52,7 +51,7 @@
   <h2>{$t('recent')}</h2>
   <ul class="list">
     {#each $recents as r (`${r.lat},${r.lon}`)}
-      <li><button class="row" onclick={() => navigate({ name: 'plan', mode: 'now', to: r })}>🕘 {r.name}</button></li>
+      <li><button class="row" onclick={() => navigate({ name: 'plan', mode: 'now', to: r })}><Icon name="history" size={18} /> {r.name}</button></li>
     {/each}
   </ul>
 {/if}

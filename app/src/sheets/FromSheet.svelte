@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
   import type { LineRec } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import type { PlaceRef } from '../router/types';
@@ -66,8 +67,8 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}>←</button>
-  <h1>{group ? `🚏 ${group.name}` : $t('stopNotFound')}</h1>
+  <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}><Icon name="back" /></button>
+  <h1>{#if group}<Icon name="stop" /> {group.name}{:else}{$t('stopNotFound')}{/if}</h1>
 </div>
 
 {#if group}
@@ -81,7 +82,7 @@
           <LineBadge routeId={s.l.routeId} /> <span class="head">→ {s.direction.headsign}</span> <span aria-hidden="true">{s.open ? '▾' : '▸'}</span>
         </button>
         {#if !lineNo && s.l.directions.length > 1}
-          <button class="secondary flip" aria-label={`${$t('switchDirection')} ${s.l.number}`} onclick={() => (chosen[s.l.number] = flip(s.l, s.direction.directionId))}>⇄</button>
+          <button class="secondary flip" aria-label={`${$t('switchDirection')} ${s.l.number}`} onclick={() => (chosen[s.l.number] = flip(s.l, s.direction.directionId))}><Icon name="flip" size={18} /></button>
         {/if}
       </div>
       {#if s.open}

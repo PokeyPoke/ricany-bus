@@ -12,8 +12,9 @@
   import LineView from './sheets/LineView.svelte';
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
+  import Icon from './components/Icon.svelte';
   import { route, navigate } from './lib/nav';
-  import { t, lang } from './lib/i18n';
+  import { t } from './lib/i18n';
   import { loadData, daysLeft, type AppData } from './lib/data';
 
   let data = $state.raw<AppData | null>(null); // raw: large, immutable, and must be structured-cloneable for the router worker
@@ -36,9 +37,9 @@
 
 <div class="app">
   <header class="topbar">
-    <button class="search" onclick={() => navigate({ name: 'plan', mode: 'now' })}>🔍 {$t('whereTo')}</button>
-    <button class="icon" aria-label={$t('about')} onclick={() => navigate({ name: 'about' })}>ⓘ</button>
-    <button class="icon" aria-label={$t('langToggle')} onclick={() => lang.update((l) => (l === 'cs' ? 'en' : 'cs'))}>{$lang === 'cs' ? 'EN' : 'CZ'}</button>
+    <!-- the one way into search: always visible, on every screen -->
+    <button class="search" onclick={() => navigate({ name: 'plan', mode: 'now' })}><Icon name="search" size={22} /> <span>{$t('whereTo')}</span></button>
+    <button class="icon" aria-label={$t('about')} onclick={() => navigate({ name: 'about' })}><Icon name="info" size={22} /></button>
   </header>
   {#if stale}<div class="banner" role="status">{$t('staleData')}</div>{/if}
   {#if !online}<div class="banner" role="status">{$t('offline')}</div>{/if}
@@ -77,8 +78,8 @@
 <style>
   .app { display: flex; flex-direction: column; height: 100dvh; }
   .topbar { display: flex; gap: 8px; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); background: var(--bg); box-shadow: var(--shadow); z-index: 10; }
-  .search { flex: 1; text-align: left; background: var(--chip); border-radius: 12px; padding: 0 14px; color: var(--muted); }
-  .icon { width: 44px; border-radius: 12px; background: var(--chip); font-weight: 700; }
+  .search { flex: 1; display: flex; align-items: center; gap: 10px; min-height: 48px; text-align: left; background: var(--accent); color: var(--accent-fg); border-radius: 14px; padding: 0 16px; font-weight: 700; font-size: 1.05rem; }
+  .icon { width: 48px; display: grid; place-items: center; border-radius: 14px; background: var(--chip); color: var(--fg); }
   .stage { position: relative; flex: 1; overflow: hidden; }
   .center { display: grid; place-items: center; align-content: center; gap: 12px; height: 100%; }
 </style>

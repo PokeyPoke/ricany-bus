@@ -1,4 +1,6 @@
 <script lang="ts">
+  import Icon from '../components/Icon.svelte';
+  import Platform from '../components/Platform.svelte';
   import { untrack } from 'svelte';
   import { formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
@@ -45,8 +47,8 @@
 </script>
 
 <div class="sheet-header">
-  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}>←</button>
-  {#if v}<h1><LineBadge routeId={v.routeId} /> {#if pat}→ {pat.headsign}{:else}{$t('livePosition')}{/if}</h1>{:else}<h1>🚌</h1>{/if}
+  <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}><Icon name="back" /></button>
+  {#if v}<h1><LineBadge routeId={v.routeId} /> {#if pat}→ {pat.headsign}{:else}{$t('livePosition')}{/if}</h1>{:else}<h1><Icon name="bus" /></h1>{/if}
 </div>
 
 {#if !v}
@@ -62,7 +64,7 @@
     {#each stopsList as s (s.pos)}
       <li>
         <button class="row" class:cur={s.current} onclick={() => navigate({ name: 'stop', stopId: res.net.stops[s.stopIdx].id })}>
-          <span class="eta">{hm(s.eta)}</span> {res.net.stops[s.stopIdx].name}{res.net.stops[s.stopIdx].platform ? ` (${res.net.stops[s.stopIdx].platform})` : ''}
+          <span class="eta">{hm(s.eta)}</span> {res.net.stops[s.stopIdx].name}<Platform p={res.net.stops[s.stopIdx].platform} />
         </button>
       </li>
     {/each}
