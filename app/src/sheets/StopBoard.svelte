@@ -2,7 +2,7 @@
   import { dayName } from '../lib/days';
   import Icon from '../components/Icon.svelte';
   import Platform from '../components/Platform.svelte';
-  import { addDays, formatHM, LINE_ORDER, type FreeRouteId } from '@rb/shared';
+  import { addDays, formatHM, hmToSec, LINE_ORDER, type FreeRouteId } from '@rb/shared';
   import { streetGraph, useStreets, nearestOnFoot } from '../lib/streets';
   import type { AppData } from '../lib/data';
   import { netFor } from '../lib/network';
@@ -15,7 +15,10 @@
   import LineBadge from '../components/LineBadge.svelte';
   import DelayBadge from '../components/DelayBadge.svelte';
 
-  let { data, stopId }: { data: AppData; stopId: string } = $props();
+  let { data, stopId, date, time }: { data: AppData; stopId: string; date?: string; time?: string } = $props();
+  /** the board's moment: now (live, with delays), or a chosen date and time */
+  const live = $derived(!(date && time));
+  const moment = $derived(date && time ? { date, sec: hmToSec(time) } : $now);
   const LIMIT = 12;
 
   const stop = $derived(data.stops.find((s) => s.id === stopId) ?? null);
@@ -43,11 +46,12 @@
   });
 
   const deps = $derived.by(() => {
-    const n = $now;
+    const n = moment;
+    const delayOf = (d: { tripId: string; serviceDate: string; seq: number }) => (live ? tripDelay($delays, d.tripId, d.serviceDate, d.seq) : null);
     const collect = (date: string, from: number, day: number) =>
       group.flatMap((i) => departuresAt(netFor(data, date), i, from, 40).map((d) => ({ ...d, stop: i, day })));
     // From 15 min back so late buses still show; the delay-adjusted time decides whether they are gone.
-    const today = boardWindow(collect(n.date, n.sec - 15 * 60, 0), n.sec, (d) => tripDelay($delays, d.tripId, d.serviceDate, d.seq), LIMIT);
+    const today = boardWindow(collect(n.date, n.sec - 15 * 60, 0), n.sec, delayOf, LIMIT);
     if (today.length >= LIMIT) return today;
     // Next date with service (up to 3 days ahead), e.g. Saturday evening -> Monday.
     for (let k = 1; k <= 3; k++) {
@@ -67,11 +71,12 @@
 
   /** heading over the departures of a later day (shown once, not on every row) */
   function dayHeading(day: number): string {
-    const name = dayName(addDays($now.date, day), $lang);
+    const name = dayName(addDays(moment.date, day), $lang);
     return day === 1 ? `${$t('tomorrow')} · ${name}` : name;
   }
   function whenLabel(dep: number, delay: number | null, day: number): string {
     if (day > 0) return '';
+    if (!live) return '';
     const diff = Math.round((dep + (delay ?? 0) - $now.sec) / 60);
     if (diff <= 0) return $t('nowShort');
     return diff < 60 ? $t('inMin', { n: diff }) : '';
@@ -79,7 +84,7 @@
   const here = () => (stop ? { lat: stop.lat, lon: stop.lon, name: stop.name } : undefined);
 </script>
 
-<div class="sheet-header">
+<div class="sheet-header nav-header">
   <button class="back" aria-label={$t('back')} onclick={() => history.length > 1 ? history.back() : navigate({ name: 'home' })}><Icon name="back" /></button>
   <h1>{#if stop}<Icon name="stop" /> {stop.name}{:else}{$t('stopNotFound')}{/if}</h1>
 </div>
@@ -97,16 +102,17 @@
   </div>
 
   <h2>{$t('departures')}</h2>
-  {#if !deps.length || deps[0].day > 0}<p class="muted">{$t('noMoreToday')}</p>{/if}
+  {#if !live}<p class="muted small">{$t('departuresFrom', { when: `${dayName(moment.date, $lang)} ${time}` })}</p>
+  {:else if !deps.length || deps[0].day > 0}<p class="muted">{$t('noMoreToday')}</p>{/if}
   <ul class="list">
     {#each deps as d, i (`${d.tripId}-${d.serviceDate}-${d.stop}`)}
       {#if d.day > 0 && (i === 0 || deps[i - 1].day !== d.day)}<li class="day">{dayHeading(d.day)}</li>{/if}
-      {@const delay = d.day === 0 ? tripDelay($delays, d.tripId, d.serviceDate, d.seq) : null}
+      {@const delay = d.day === 0 && live ? tripDelay($delays, d.tripId, d.serviceDate, d.seq) : null}
       <li class="dep">
         <span class="time">{formatHM(d.dep)}</span>
         <LineBadge routeId={d.routeId} />
         <span class="head">{d.headsign}<Platform p={data.stops[d.stop].platform} /></span>
-        <span class="when">{whenLabel(d.dep, delay, d.day)}{#if d.day === 0}<DelayBadge sec={delay} live={$delaysOk} />{/if}</span>
+        <span class="when">{whenLabel(d.dep, delay, d.day)}{#if d.day === 0 && live}<DelayBadge sec={delay} live={$delaysOk} />{/if}</span>
       </li>
     {/each}
   </ul>

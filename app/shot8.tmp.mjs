@@ -1,0 +1,18 @@
+import { chromium, devices } from '@playwright/test';
+const S = process.argv[2];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const ctx = await b.newContext({ ...devices['Pixel 7'], locale: 'cs-CZ', timezoneId: 'Europe/Prague', geolocation: { latitude: 49.9905, longitude: 14.6745 }, permissions: ['geolocation'] });
+const page = await ctx.newPage();
+page.on('pageerror', (e) => console.log('ERR', e.message));
+const snap = async (n) => { await page.waitForTimeout(2500); await page.screenshot({ path: `${S}/v2/${n}.png` }); console.log(n, decodeURIComponent(page.url().split('#')[1] ?? '')); };
+await page.goto('http://localhost:4173/ricany-bus/v2/'); await snap('1-home');
+await page.goto('http://localhost:4173/ricany-bus/v2/#/stop/U1881Z11'); await snap('2-stop');
+await page.locator('.sentence .word.empty').click(); await snap('3-edit-to');
+await page.locator('.editor input').first().fill('nádra'); await page.waitForTimeout(800);
+await page.locator('.editor [role="option"]').first().click(); await snap('4-trip');
+await page.locator('.sentence .word').last().click(); await page.waitForTimeout(500);
+await page.getByRole('button', { name: 'zítra 7:30' }).click(); await snap('5-tomorrow');
+await page.getByRole('button', { name: 'Hotovo' }).last().click().catch(()=>{});
+await page.locator('.sentence .x').first().click(); await snap('6-cleared');
+await page.locator('.content button.line').first().click().catch((e)=>console.log(e.message)); await snap('7-line');
+await b.close();

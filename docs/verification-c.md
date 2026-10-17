@@ -75,3 +75,17 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 - Map opens on the whole network, framed above the sheet; all fits keep clear of the right-hand buttons.
 - Other stops fade with the other lines when a line or trip is shown.
 - Lines not running today: outlined badges instead of faded colour.
+
+## Beta: the one-sentence version (/v2/)
+
+Live next to the classic app at `/ricany-bus/v2/` (same code, data, saved places and settings; `noindex`).
+Every screen is one sentence, **Z [odkud] do [kam] · [kdy]**, in place of the top bar:
+
+- `app/src/v2/sentence.ts` reads the sentence out of the current route and turns an edited word back into a route
+  (`setFrom`, `setTo`, `clearTo`, `clearLine`, `swap`, `tapStop`, `withWhen`), so the classic screens and URLs are reused.
+- `app/src/v2/SentenceBar.svelte`: the sentence and its editors (place search with my location / pick on map; time: now,
+  depart at, arrive by, +1 h, tonight, tomorrow morning, date and time).
+- The chosen moment applies to every screen: home and stop boards (`?d=&t=`, no live delays), trips, line timetables (`?d=`),
+  and is carried across links (`carryWhen` via `setRouteRewrite`). A stop tapped on the map after a start stop becomes the destination.
+- The classic screens' own headers and planner form are hidden in the beta (`.v2 .nav-header`, `.v2 .plan-form`).
+- About links between the two versions. The service worker never answers `/v2/` with the classic `index.html`.

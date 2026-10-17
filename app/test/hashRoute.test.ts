@@ -6,6 +6,9 @@ const rt = (r: Route) => expect(parseHash(formatRoute(r))).toEqual(r);
 describe('hashRoute', () => {
   it('round-trips every route', () => {
     rt({ name: 'home' });
+    rt({ name: 'home', date: '20261019', time: '7:30' });
+    rt({ name: 'stop', stopId: 'U1Z1P', date: '20261024', time: '8:00' });
+    rt({ name: 'line', number: '2', dir: 1, date: '20261024' });
     rt({ name: 'plan', mode: 'arr', from: { lat: 49.991833, lon: 14.655608, name: 'Domů, u lesa' }, to: { lat: 50.0, lon: 14.66, name: 'Škola' }, date: '20261019', time: '07:45', sel: 'f1' });
     rt({ name: 'plan', mode: 'now', from: undefined, to: undefined, date: undefined, time: undefined, sel: undefined });
     rt({ name: 'stop', stopId: 'U9364Z11' });

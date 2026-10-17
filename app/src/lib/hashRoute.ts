@@ -3,10 +3,10 @@ export type { PlaceRef };
 
 export type PlanMode = 'now' | 'dep' | 'arr';
 export type Route =
-  | { name: 'home' }
+  | { name: 'home'; date?: string; time?: string }
   | { name: 'plan'; from?: PlaceRef; to?: PlaceRef; mode: PlanMode; date?: string; time?: string; sel?: string }
-  | { name: 'stop'; stopId: string }
-  | { name: 'line'; number: string; dir: number; stopId?: string }
+  | { name: 'stop'; stopId: string; date?: string; time?: string }
+  | { name: 'line'; number: string; dir: number; stopId?: string; date?: string }
   | { name: 'about' }
   | { name: 'bike'; uid: number }
   | { name: 'bus'; tripId: string }
@@ -23,6 +23,14 @@ function decPlace(s: string | null): PlaceRef | undefined {
 /** index into LineRec.directions (a direction or one of its route variants); anything else → 0 */
 const dirIdx = (v: string | null): number => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 16 ? n : 0; };
 const opt = (v: string | null) => v ?? undefined;
+const validDate = (v: string | null) => (v && /^\d{8}$/.test(v) ? v : undefined);
+const validTime = (v: string | null) => (v && /^\d{1,2}:\d{2}$/.test(v) ? v : undefined);
+/** optional moment for boards ("departures at …"): both parts or nothing */
+function at(q: URLSearchParams): { date?: string; time?: string } {
+  const date = validDate(q.get('d')), time = validTime(q.get('t'));
+  return date && time ? { date, time } : {};
+}
+const atQuery = (r: { date?: string; time?: string }) => (r.date && r.time ? `?${new URLSearchParams({ d: r.date, t: r.time })}` : '');
 
 export function parseHash(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#/, '').split('?');
@@ -40,9 +48,12 @@ export function parseHash(hash: string): Route {
       return { name: 'plan', mode, from: decPlace(q.get('from')), to: decPlace(q.get('to')), date: opt(q.get('d')), time: opt(q.get('t')), sel: opt(q.get('sel')) };
     }
     case 'stop':
-      return parts[1] ? { name: 'stop', stopId: parts[1] } : { name: 'home' };
-    case 'line':
-      return parts[1] ? { name: 'line', number: parts[1], dir: dirIdx(q.get('dir')), stopId: opt(q.get('stop')) } : { name: 'home' };
+      return parts[1] ? { name: 'stop', stopId: parts[1], ...at(q) } : { name: 'home' };
+    case 'line': {
+      if (!parts[1]) return { name: 'home' };
+      const d = validDate(q.get('d'));
+      return { name: 'line', number: parts[1], dir: dirIdx(q.get('dir')), stopId: opt(q.get('stop')), ...(d ? { date: d } : {}) };
+    }
     case 'about':
       return { name: 'about' };
     case 'bike': {
@@ -61,14 +72,14 @@ export function parseHash(hash: string): Route {
       return line && from && to ? { name: 'ride', line, dir: dirIdx(q.get('dir')), from, to } : { name: 'home' };
     }
     default:
-      return { name: 'home' };
+      return { name: 'home', ...at(q) };
   }
 }
 
 export function formatRoute(r: Route): string {
   switch (r.name) {
     case 'home':
-      return '#/';
+      return `#/${atQuery(r)}`;
     case 'plan': {
       const q = new URLSearchParams();
       if (r.from) q.set('from', encPlace(r.from));
@@ -80,10 +91,11 @@ export function formatRoute(r: Route): string {
       return `#/plan?${q}`;
     }
     case 'stop':
-      return `#/stop/${encodeURIComponent(r.stopId)}`;
+      return `#/stop/${encodeURIComponent(r.stopId)}${atQuery(r)}`;
     case 'line': {
       const q = new URLSearchParams({ dir: String(r.dir) });
       if (r.stopId) q.set('stop', r.stopId);
+      if (r.date) q.set('d', r.date);
       return `#/line/${encodeURIComponent(r.number)}?${q}`;
     }
     case 'about':

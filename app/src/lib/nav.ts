@@ -13,7 +13,13 @@ addEventListener('hashchange', () => {
 
 export const route = { subscribe: store.subscribe };
 
-export function navigate(r: Route, replace = false): void {
+/** the new version keeps its chosen day and time across screens; null in the classic version */
+let rewrite: ((next: Route, cur: Route) => Route) | null = null;
+export function setRouteRewrite(f: typeof rewrite): void { rewrite = f; }
+
+/** `exact`: the route as given (the sentence bar's own edits), without the rewrite */
+export function navigate(r: Route, replace = false, exact = false): void {
+  if (rewrite && !exact) r = rewrite(r, parseHash(curHash));
   const h = formatRoute(r);
   if (replace) {
     history.replaceState(history.state, '', h);

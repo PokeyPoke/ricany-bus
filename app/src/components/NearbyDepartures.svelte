@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import Platform from './Platform.svelte';
-  import { formatHM } from '@rb/shared';
+  import { formatHM, hmToSec } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { netFor } from '../lib/network';
   import { departuresAt, boardWindow } from '../router/departures';
@@ -15,7 +15,10 @@
   import LineBadge from './LineBadge.svelte';
   import DelayBadge from './DelayBadge.svelte';
 
-  let { data }: { data: AppData } = $props();
+  let { data, date, time }: { data: AppData; date?: string; time?: string } = $props();
+  /** now (live, with delays) or a chosen date and time */
+  const live = $derived(!(date && time));
+  const moment = $derived(date && time ? { date, sec: hmToSec(time) } : $now);
   const STOPS = 2, PER_STOP = 3, MAX_M = 1000;
 
   let state = $state<'idle' | 'locating' | 'denied' | 'failed'>('idle');
@@ -33,12 +36,13 @@
 
   const near = $derived($userPos ? nearestOnFoot($streetGraph, $userPos, data.groups, STOPS + 3, MAX_M) : []);
   const boards = $derived(near.map(({ item: g, sec }) => {
-    const n = $now;
+    const n = moment;
     const list = g.platforms.flatMap((i) => departuresAt(netFor(data, n.date), i, n.sec - 15 * 60, 20).map((d) => ({ ...d, stop: i })));
-    const deps = boardWindow(list, n.sec, (d) => tripDelay($delays, d.tripId, d.serviceDate, d.seq), PER_STOP);
+    const deps = boardWindow(list, n.sec, (d) => (live ? tripDelay($delays, d.tripId, d.serviceDate, d.seq) : null), PER_STOP);
     return { g, walkMin: Math.max(1, Math.round(sec / 60)), deps };
   }).filter((b) => b.deps.length).slice(0, STOPS)); // stops with nothing left today give way to the next nearest
   const inMin = (dep: number, delay: number | null) => {
+    if (!live) return '';
     const diff = Math.round((dep + (delay ?? 0) - $now.sec) / 60);
     return diff <= 0 ? $t('nowShort') : diff < 60 ? $t('inMin', { n: diff }) : '';
   };
@@ -62,7 +66,7 @@
     {#if b.deps.length}
       <ul class="list">
         {#each b.deps as d (`${d.tripId}-${d.serviceDate}-${d.stop}`)}
-          {@const delay = tripDelay($delays, d.tripId, d.serviceDate, d.seq)}
+          {@const delay = live ? tripDelay($delays, d.tripId, d.serviceDate, d.seq) : null}
           <li class="dep">
             <span class="time">{formatHM(d.dep)}</span>
             <LineBadge routeId={d.routeId} />

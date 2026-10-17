@@ -9,7 +9,7 @@
   import { MAP_STYLE, MAP_STYLE_DARK } from '../config';
   import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles, waitingStart } from '../lib/live';
   import { netFor } from '../lib/network';
-  import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
+  import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now, stopTap } from '../lib/ui';
   import { navigate, route } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
@@ -77,7 +77,11 @@
       return;
     }
     const g = nearest(q('groups-hit', near(22)));
-    if (g) { navigate({ name: 'stop', stopId: data.groups[Number(p(g).gi)].id }); return; }
+    if (g) {
+      const id = data.groups[Number(p(g).gi)].id, tap = get(stopTap);
+      if (tap) tap(id); else navigate({ name: 'stop', stopId: id });
+      return;
+    }
     const place = nearest(q('places', near(18)).concat(q('places-detail', near(18))));
     if (place) { showPlace(place); return; }
     const l = q('lines', near(10))[0];
