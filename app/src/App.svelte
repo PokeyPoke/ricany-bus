@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import UpdateBar from './components/UpdateBar.svelte';
   import { pragueNow } from '@rb/shared';
   import Home from './sheets/Home.svelte';
   import Planner from './sheets/Planner.svelte';
@@ -41,6 +42,7 @@
     <button class="search" onclick={() => navigate({ name: 'plan', mode: 'now' })}><Icon name="search" size={22} /> <span>{$t('whereTo')}</span></button>
     <button class="icon" aria-label={$t('about')} onclick={() => navigate({ name: 'about' })}><Icon name="info" size={22} /></button>
   </header>
+  <UpdateBar />
   {#if stale}<div class="banner" role="status">{$t('staleData')}</div>{/if}
   {#if !online}<div class="banner" role="status">{$t('offline')}</div>{/if}
   <main class="stage">

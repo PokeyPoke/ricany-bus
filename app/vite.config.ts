@@ -8,7 +8,9 @@ export default defineConfig({
   plugins: [
     svelte(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // a new version waits until the user taps "load" in the update bar (lib/update.ts registers the worker)
+      registerType: 'prompt',
+      injectRegister: false,
       includeAssets: ['icons/*'],
       manifest: {
         name: 'Říčany zdarma — MHD',
@@ -30,6 +32,8 @@ export default defineConfig({
         globIgnores: ['og.png'],
         // the beta lives at /v2/ and is precached as its own page: never answer it with the classic app's index.html
         navigateFallbackDenylist: [/\/v2\//],
+        // take over open pages as soon as a worker activates, so "load" (skip waiting) reloads into the new version
+        clientsClaim: true,
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}', 'data/*.json'],
         runtimeCaching: [
           { urlPattern: ({ url }) => url.pathname.includes('/data/') && url.pathname.endsWith('.json'), handler: 'StaleWhileRevalidate', options: { cacheName: 'rb-data' } },
