@@ -280,10 +280,10 @@
   });
   $effect(() => {
     if (!gen || !map) return;
-    if (map.getLayer('lines-hl')) map.setFilter('lines-hl', ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
+    for (const id of ['lines-hl', 'lines-hl-casing']) if (map.getLayer(id)) map.setFilter(id, ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
     const dim = !!($highlightLine || $tripOverlay);
-    if (map.getLayer('lines')) map.setPaintProperty('lines', 'line-opacity', dim ? 0.3 : 0.85);
-    if (map.getLayer('lines-casing')) map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.3 : 0.9);
+    if (map.getLayer('lines')) map.setPaintProperty('lines', 'line-opacity', dim ? 0.2 : 0.9);
+    if (map.getLayer('lines-casing')) map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.2 : 0.9);
   });
   $effect(() => {
     if (!gen || !map) return;

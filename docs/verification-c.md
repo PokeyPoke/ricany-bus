@@ -24,7 +24,7 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 ## Not verified
 - Smooth movement with real buses (none running during the test); real-device feel and battery use.
 - Street routing quality across the whole town beyond the spot checks above; the OSM data quality decides it.
-- Overpass from GitHub Actions (blocked from this container; the OSM API fallback was used to build the committed graph).
+- ~~Overpass from GitHub Actions~~ verified 2026-10-17: the first "Refresh street map" run fetched via Overpass (no fallback), 9,373 nodes / 12,144 edges, committed and deployed.
 
 ## Follow-up: route variants and parked buses (2026-10-17)
 - **Route variants on the map.** Lines used to draw one route per direction (the variant with the most stops), so line 1's main Strašín ↔ Kuří route (25 trips/day) was missing behind the 8-trip OÁZA variant. Now each direction lists every variant that serves stops the others miss, most frequent first (only line 1 is affected: `→ Strašín | OÁZA → Strašín | → Kuří | → OÁZA`). `dir` in URLs and `lineSelection` is now an index into `LineRec.directions`.
@@ -41,3 +41,7 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 - **Leave-now countdown**: trip detail counts down to when to set off (first bus incl. live delay minus the walk), with an optional 2-minute vibration/notification reminder while the app is open. Hidden for trips without a bus.
 - **Refresh street map** workflow (manual) runs `npm run streets` + `npm run data`, commits and deploys.
 - Tests: shared 18, pipeline 29, worker 21, app 141; e2e 23 (new: nearby departures, alerts, countdown).
+
+## Lines sharing a road (2026-10-17)
+- Lines that run along the same road are drawn side by side (transit-map style) instead of on top of each other: each line's route is sampled every 10 m, lines within 15 m and parallel share the road, slots follow line order 1, 2, 3, 7, 9, 91, 92 and the side is fixed geographically so both directions of a line sit on the same side (`app/src/map/parallel.ts`, 68 ms on load for all lines). Offset and width scale with zoom so neighbouring lines just touch.
+- A selected line (line view, map tap) is drawn on top along its true route with a white casing; the others fade to 20 %.
