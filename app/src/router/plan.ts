@@ -140,12 +140,13 @@ export function planTrip(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[
       ? free.filter((it) => absTime(req.date, it, 'arrive') < walk.arrive)
       : free.filter((it) => absTime(req.date, it, 'depart') > walk.depart);
   }
-  const bike = planBike(ctx, req, bikes, free, accW, egrW, ways);
+  const bike = planBike(ctx, req, bikes, walk ? [...free, walk] : free, accW, egrW, ways);
   return { free, bike, walk, nearOrigin: accW.length, nearDest: egrW.length };
 }
 
 const BIKE_GAIN = 5 * 60;
 
+/** `free`: the free options (buses and walking) a paid bike option must beat by BIKE_GAIN */
 function planBike(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[] | null, free: Itinerary[], accW: StopAccess[], egrW: StopAccess[], ways: Ways): Itinerary[] {
   if (!bikes?.length) return [];
   const accB = bikeAccessOptions(ctx.stops, req.from, bikes, ways);
@@ -158,7 +159,8 @@ function planBike(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[] | nul
   const only = bikeOnly(req.from, req.to, bikes, ways);
   if (only) {
     const start = req.mode === 'dep' ? req.sec : req.sec - only.sec;
-    out.push({ date: req.date, depart: start, arrive: start + only.sec, rides: 0, free: false, legs: only.legs(start) });
+    const it: Itinerary = { date: req.date, depart: start, arrive: start + only.sec, rides: 0, free: false, legs: only.legs(start) };
+    if (better(it)) out.push(it);
   }
   return out;
 }

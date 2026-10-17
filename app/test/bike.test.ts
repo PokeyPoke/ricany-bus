@@ -35,20 +35,28 @@ describe('bikeAccessOptions', () => {
 });
 
 describe('planTrip with bikes', () => {
-  it('always offers bike-only, never marked free; hides mixed trips that are not ≥ 5 min better', () => {
+  it('hides paid options that are not ≥ 5 min better than the free ones', () => {
     const r = planTrip(ctx, { from: at(0), to: at(5), mode: 'dep', date: '20261019', sec: H(7, 55) }, stations);
-    expect(r.bike.length).toBe(1);
-    expect(r.bike[0]).toMatchObject({ rides: 0, free: false });
+    expect(r.free.length).toBeGreaterThan(0);
+    expect(r.bike).toEqual([]);
   });
   it('offers bike + bus when it clearly beats the free option', () => {
     const r = planTrip(ctx, { from: at(0), to: at(5), mode: 'dep', date: '20261019', sec: H(8, 1) }, stations);
     expect(r.free[0].date).toBe('20261020'); // free trips only tomorrow
+    expect(r.bike.some((it) => it.rides === 0)).toBe(true); // bike-only beats waiting for tomorrow's bus
     const mixed = r.bike.filter((it) => it.rides > 0);
     expect(mixed.some((it) => it.date === '20261019' && it.arrive === H(8, 33))).toBe(true);
     for (const it of r.bike) {
       expect(it.free).toBe(false);
       expect(it.legs.filter((l) => l.kind === 'bike').length).toBe(1);
     }
+  });
+  it('offers no bike for a short walk, even when no bus helps', () => {
+    // 600 m on foot, with a pickup station at the start and a drop-off near the end
+    const near = [station(1, at(0, 20), 3), station(4, at(0, 580), 0)];
+    const r = planTrip(ctx, { from: at(0), to: at(0, 600), mode: 'dep', date: '20261019', sec: H(11, 0) }, near);
+    expect(r.walk).not.toBeNull();
+    expect(r.bike).toEqual([]);
   });
   it('without bike data returns no bike options', () => {
     expect(planTrip(ctx, { from: at(0), to: at(5), mode: 'dep', date: '20261019', sec: H(7, 55) }, null).bike).toEqual([]);
