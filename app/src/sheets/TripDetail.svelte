@@ -10,6 +10,7 @@
   import { shareLink } from '../lib/share';
   import { t } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
+  import AlertList from '../components/AlertList.svelte';
   import DelayBadge from '../components/DelayBadge.svelte';
 
   let { it, data, onBack }: { it: Itinerary; data: AppData; onBack: () => void } = $props();
@@ -71,6 +72,7 @@
 {/if}
 <div class="toast" class:on={!!toast} role="status">{toast}</div>
 
+<AlertList routes={it.legs.flatMap((l) => (l.kind === 'bus' ? [l.routeId] : []))} />
 <ol class="legs">
   {#each it.legs as l, i (i)}
     <li class="leg {l.kind}">

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { get, writable } from 'svelte/store';
-import { parseNextbike, createPoller, freshVehicles, resolveVehicleTrip, waitingStart } from '../src/lib/live';
+import { parseNextbike, createPoller, freshVehicles, resolveVehicleTrip, waitingStart, activeAlerts } from '../src/lib/live';
 import { buildNetwork } from '../src/router/network';
 import { stops, timetable } from './fixtures/net';
 
@@ -122,5 +122,16 @@ describe('createPoller visibility', () => {
     expect(handlers.length).toBe(0);
     await vi.advanceTimersByTimeAsync(60_000);
     expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('activeAlerts', () => {
+  const a = (id: string, routes: string[], periods: [number | null, number | null][]) =>
+    ({ id, routes, header: id, description: '', url: '', headerEn: null, descriptionEn: null, periods }) as never;
+  const r = { generatedAt: 0, alerts: [a('always', ['L1731'], []), a('past', ['L1731'], [[100, 200]]), a('open', ['L1733'], [[100, null]]), a('later', ['L1731'], [[5000, 6000]])] };
+  it('keeps alerts active now and filters by line', () => {
+    expect(activeAlerts(r, 1000_000).map((x) => x.id)).toEqual(['always', 'open']);
+    expect(activeAlerts(r, 1000_000, ['L1733']).map((x) => x.id)).toEqual(['open']);
+    expect(activeAlerts(null, 0)).toEqual([]);
   });
 });

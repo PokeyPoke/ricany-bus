@@ -5,6 +5,7 @@
   import { navigate } from '../lib/nav';
   import { t } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
+  import AlertList from '../components/AlertList.svelte';
 
   let { data, number, dir, stopId }: { data: AppData; number: string; dir: number; stopId: string | undefined } = $props();
 
@@ -88,6 +89,7 @@
 </div>
 
 {#if line && direction}
+  <AlertList routes={[line.routeId]} />
   {#if line.directions.length > 1}
     <div class="seg" role="group">
       {#each line.directions as _, i (i)}

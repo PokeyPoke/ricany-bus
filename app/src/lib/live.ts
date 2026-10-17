@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
-import { NEXTBIKE_CITY_UID, addDays, daysBetween, type DelaysResponse, type PositionsResponse, type Vehicle } from '@rb/shared';
+import { NEXTBIKE_CITY_UID, addDays, daysBetween, type AlertsResponse, type DelaysResponse, type FreeRouteId, type ServiceAlert, type PositionsResponse, type Vehicle } from '@rb/shared';
 import { NEXTBIKE_URL, WORKER_URL } from '../config';
 import type { BikeStation } from '../router/types';
 import type { Network } from '../router/network';
@@ -86,6 +86,23 @@ export const positionsOk = writable(true);
 export const usePositions = createPoller(fetchPositions, 15_000, positions, positionsOk);
 
 export const useDelays = createPoller(fetchDelays, 30_000, delays, delaysOk);
+
+async function fetchAlerts(signal: AbortSignal): Promise<AlertsResponse> {
+  const r = await fetch(`${WORKER_URL}/alerts`, { signal });
+  if (!r.ok) throw new Error(`alerts ${r.status}`);
+  return (await r.json()) as AlertsResponse;
+}
+export const alerts = writable<AlertsResponse | null>(null);
+export const alertsOk = writable(true);
+export const useAlerts = createPoller(fetchAlerts, 5 * 60_000, alerts, alertsOk);
+
+/** Alerts active at `nowMs` (no periods = always), optionally only those naming one of `routes`. */
+export function activeAlerts(r: AlertsResponse | null, nowMs: number, routes?: FreeRouteId[]): ServiceAlert[] {
+  const now = nowMs / 1000;
+  return (r?.alerts ?? []).filter((a) =>
+    (!a.periods.length || a.periods.some(([s, e]) => (s == null || s <= now) && (e == null || now <= e)))
+    && (!routes || a.routes.some((x) => routes.includes(x))));
+}
 export const useBikes = createPoller(fetchBikes, 60_000, bikes, bikesOk, (at) => bikesAt.set(at));
 
 export function freshVehicles(r: PositionsResponse | null, nowMs: number, maxAgeMs = 180_000): Vehicle[] {

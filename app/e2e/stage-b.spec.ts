@@ -79,3 +79,15 @@ test.describe('offline', () => {
     await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
   });
 });
+
+test('service alerts show on the home screen and the affected line, with details on tap', async ({ page }) => {
+  await page.goto('./');
+  const alert = page.getByRole('button', { name: /Testovací výluka/ });
+  await expect(alert).toBeVisible();
+  await page.goto('./#/line/1');
+  await expect(page.getByRole('button', { name: /Testovací výluka/ })).toHaveCount(0);
+  await page.goto('./#/line/3');
+  await page.getByRole('button', { name: /Testovací výluka/ }).click();
+  await expect(page.getByText('Linka 3 jede odklonem.')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Podrobnosti na pid.cz' })).toHaveAttribute('href', 'https://pid.cz/test');
+});

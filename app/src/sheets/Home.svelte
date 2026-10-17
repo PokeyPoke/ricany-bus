@@ -10,6 +10,7 @@
   import LineBadge from '../components/LineBadge.svelte';
   import AddPlace from '../components/AddPlace.svelte';
   import NearbyDepartures from '../components/NearbyDepartures.svelte';
+  import AlertList from '../components/AlertList.svelte';
 
   let { data }: { data: AppData } = $props();
   let adding = $state(false);
@@ -27,6 +28,8 @@
 </script>
 
 <button class="primary big" onclick={() => navigate({ name: 'plan', mode: 'now' })}>🔍 {$t('whereTo')}</button>
+
+<AlertList />
 
 <NearbyDepartures {data} />
 
