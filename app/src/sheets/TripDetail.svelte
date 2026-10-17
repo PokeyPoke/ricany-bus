@@ -11,6 +11,7 @@
   import { t } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
   import AlertList from '../components/AlertList.svelte';
+  import LeaveCountdown from '../components/LeaveCountdown.svelte';
   import DelayBadge from '../components/DelayBadge.svelte';
 
   let { it, data, onBack }: { it: Itinerary; data: AppData; onBack: () => void } = $props();
@@ -72,6 +73,7 @@
 {/if}
 <div class="toast" class:on={!!toast} role="status">{toast}</div>
 
+<LeaveCountdown {it} boardDelay={ov.boardDelay} />
 <AlertList routes={it.legs.flatMap((l) => (l.kind === 'bus' ? [l.routeId] : []))} />
 <ol class="legs">
   {#each it.legs as l, i (i)}

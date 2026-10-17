@@ -37,6 +37,7 @@ test('plans a free-only trip and opens its timeline', async ({ page }) => {
   await card.click();
   await expect(page.getByRole('button', { name: 'Zpět' })).toBeVisible();
   await expect(page.locator('.leg.bus').first()).toBeVisible();
+  await expect(page.getByRole('timer')).toContainText(/Vyrazte/);
 });
 
 test.describe('with location', () => {
