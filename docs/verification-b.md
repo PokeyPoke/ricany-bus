@@ -1,7 +1,7 @@
 # Stage B verification — 2026-10-16
 
 ## Automated
-- Unit tests: shared 22, pipeline 19, app 112 (worker included in the root `npm test`); all green. `npm run typecheck`: 0 errors.
+- Unit tests: shared 11, pipeline 22, worker 19, app 112; all green. `npm run typecheck`: 0 errors.
 - E2E (Pixel 7 viewport, mocked externals incl. `/positions`): 21 passed locally (10 Stage A + layers/About/Kam jedete?/combobox + Stage B `e2e/stage-b.spec.ts`: bus tap on map via `window.__rbMap` (enabled only with `?e2e` in production builds), bus sheet by URL, numbered line stops + `aria-current`, stop board "Jet odsud", About + ricany.cz link, share clipboard fallback toast, offline reload with the service worker).
 - CI (Node 22, ubuntu-24.04; see `ci.yml`) and Deploy, e2e-hook commit: https://github.com/PokeyPoke/ricany-bus/actions/runs/38943275988 and https://github.com/PokeyPoke/ricany-bus/actions/runs/38943276027. Stage B specs commit: CI https://github.com/PokeyPoke/ricany-bus/actions/runs/38943775835, Deploy https://github.com/PokeyPoke/ricany-bus/actions/runs/38943775888. Runs for the final docs/tidy commit are in the task report.
 - The line -> Kam jedete? -> ride e2e comes from Stage A/Task 7 (`app.spec.ts`); `stage-b.spec.ts` does not duplicate it.
