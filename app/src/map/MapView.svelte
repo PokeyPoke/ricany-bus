@@ -9,7 +9,7 @@
   import { MAP_STYLE, MAP_STYLE_DARK } from '../config';
   import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles, waitingStart } from '../lib/live';
   import { netFor } from '../lib/network';
-  import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now, stopTap } from '../lib/ui';
+  import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now, stopTap, APPROX_M } from '../lib/ui';
   import { navigate, route } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
   import { t } from '../lib/i18n';
@@ -158,13 +158,29 @@
     untrack(() => { popup?.remove(); popup = null; });
   });
 
+  /** frame my position above the sheet: street level when precise, the whole accuracy circle when not */
+  function showMe() {
+    const p = get(userPos);
+    if (!map || !p) return;
+    map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+    if (p.acc <= 150) { map.flyTo({ center: [p.lon, p.lat], zoom: 16, padding: padding() }); return; }
+    const dLat = p.acc / 111_320, dLon = p.acc / (111_320 * Math.cos((p.lat * Math.PI) / 180));
+    map.fitBounds([[p.lon - dLon, p.lat - dLat], [p.lon + dLon, p.lat + dLat]], { padding: padding(), maxZoom: 16, duration: 600 });
+  }
+  // after the locate button, follow the first precise fix once it arrives (GPS a few seconds after the coarse answer)
+  let followUntil = 0;
+  $effect(() => {
+    const p = $userPos;
+    if (p && p.acc <= 150 && Date.now() < followUntil) { followUntil = 0; untrack(showMe); }
+  });
   let locating = $state(false);
   async function locate() {
     if (locating) return;
     locating = true;
     try {
-      const p = await getLocation();
-      map?.flyTo({ center: [p.lon, p.lat], zoom: 15 });
+      await getLocation();
+      showMe();
+      followUntil = Date.now() + 60_000;
     } catch { /* the planner shows location errors; the map button fails quietly */ }
     finally { locating = false; }
   }
@@ -318,6 +334,19 @@
     marker('to', $planMarkers.to, 'to', 'B');
   });
   $effect(() => { if (gen) marker('me', $userPos, 'me'); });
+  // how sure the phone is: a pale circle of the reported accuracy around the dot
+  $effect(() => {
+    if (!gen || !map) return;
+    const p = $userPos;
+    const src = map.getSource('me-acc') as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+    src.setData({ type: 'FeatureCollection', features: p ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lon, p.lat] }, properties: {} }] : [] } as never);
+    if (p) {
+      // metres -> pixels at zoom 0, then doubling per zoom level
+      const r0 = p.acc / (156543.03 * Math.cos((p.lat * Math.PI) / 180));
+      map.setPaintProperty('me-acc', 'circle-radius', ['interpolate', ['exponential', 2], ['zoom'], 0, r0, 22, r0 * 2 ** 22]);
+    }
+  });
   $effect(() => {
     if (!gen || !map || !$focusPoints?.length) return;
     const b = bbox($focusPoints);
@@ -332,7 +361,8 @@
 </script>
 
 <div class="map" bind:this={el}></div>
-{#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>{/if}
+{#if fellBack}<div class="note" role="status">{$t('mapFallback')}</div>
+{:else if $userPos && $userPos.acc > APPROX_M}<div class="note" role="status">{$t('locationApprox', { km: ($userPos.acc / 1000).toFixed(1) })}</div>{/if}
 <button class="locate" aria-label={locating ? $t('locating') : $t('locate')} aria-busy={locating} onclick={locate}>{#if locating}<span class="spin"></span>{:else}<Icon name="locate" size={22} />{/if}</button>
 <LayersPanel />
 

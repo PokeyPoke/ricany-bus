@@ -29,6 +29,7 @@ export function addLayers(map: maplibregl.Map, data: AppData, dark = false): voi
   }
   map.addSource('bikes', { type: 'geojson', data: empty as never });
   map.addSource('trip', { type: 'geojson', data: empty as never });
+  map.addSource('me-acc', { type: 'geojson', data: empty as never });
 
   const round = { 'line-join': 'round', 'line-cap': 'round' } as const;
   // one line width per slot, so lines sharing a road just touch at every zoom
@@ -40,6 +41,7 @@ export function addLayers(map: maplibregl.Map, data: AppData, dark = false): voi
   map.addLayer({ id: 'lines-hl-casing', type: 'line', source: 'lines-full', layout: round, filter: ['==', ['get', 'routeId'], ''], paint: { 'line-color': halo, 'line-width': 11 } });
   map.addLayer({ id: 'lines-hl', type: 'line', source: 'lines-full', layout: round, filter: ['==', ['get', 'routeId'], ''], paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
 
+  map.addLayer({ id: 'me-acc', type: 'circle', source: 'me-acc', paint: { 'circle-radius': 0, 'circle-color': '#1a73e8', 'circle-opacity': 0.12, 'circle-stroke-color': '#1a73e8', 'circle-stroke-width': 1, 'circle-stroke-opacity': 0.4, 'circle-pitch-alignment': 'map' } });
   map.addLayer({ id: 'trip-walk', type: 'line', source: 'trip', layout: round, filter: ['==', ['get', 'kind'], 'walk'], paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': [1, 1.5] } });
   map.addLayer({ id: 'trip-bike', type: 'line', source: 'trip', layout: round, filter: ['==', ['get', 'kind'], 'bike'], paint: { 'line-color': ['get', 'color'], 'line-width': 5, 'line-dasharray': [2, 1] } });
   map.addLayer({ id: 'trip-bus', type: 'line', source: 'trip', layout: round, filter: ['==', ['get', 'kind'], 'bus'], paint: { 'line-color': ['get', 'color'], 'line-width': 8 } });
