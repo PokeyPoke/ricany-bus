@@ -50,6 +50,11 @@ test.describe('with location', () => {
     const from = new URL(page.url().replace('#/', '')).searchParams.get('from')!;
     expect(Number(from.split(',')[0])).toBeCloseTo(a.lat, 4);
     await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
+  });  test('home lists departures from the nearest stop', async ({ page }) => {
+    await page.goto('./');
+    await expect(page.getByRole('heading', { name: 'Odjezdy v okolí' })).toBeVisible();
+    await expect(page.getByRole('button', { name: new RegExp(`🚏 ${a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) })).toBeVisible();
+    await expect(page.locator('.dep').first()).toBeVisible();
   });
 });
 

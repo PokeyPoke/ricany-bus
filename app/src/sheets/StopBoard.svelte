@@ -58,7 +58,7 @@
   useStreets();
   const nearestBike = $derived.by(() => {
     if (!stop || !$bikes?.length) return null;
-    const best = nearestOnFoot($streetGraph, stop, $bikes, 1)[0];
+    const best = nearestOnFoot($streetGraph, stop, $bikes, 1, Infinity)[0];
     return best ? { b: best.item, m: best.m } : null;
   });
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { StreetGraph, WALK, haversine, type StreetsFile } from '@rb/shared';
+import { StreetGraph, WALK, haversine, walkSec, type StreetsFile } from '@rb/shared';
 import { nearestOnFoot } from '../src/lib/streets';
 
 // one street along 50.000 from 14.600 to 14.620; a fence-like gap: no street to the north side
@@ -21,5 +21,9 @@ describe('nearestOnFoot', () => {
   });
   it('drops items beyond the limit', () => {
     expect(nearestOnFoot(g, from, [a], 1, 300)).toEqual([]);
+  });
+  it('keeps far items with a straight-line estimate when there is no limit', () => {
+    const far = { id: 'far', lat: 50, lon: 14.7 }; // 7 km: beyond the 3.5 km street search
+    expect(nearestOnFoot(g, from, [far], 1, Infinity)[0]).toMatchObject({ m: Math.round(haversine(50, 14.6, 50, 14.7)), sec: walkSec(haversine(50, 14.6, 50, 14.7)) });
   });
 });

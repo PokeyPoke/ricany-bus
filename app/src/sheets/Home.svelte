@@ -9,6 +9,7 @@
   import { formatHM, LINE_STYLE } from '@rb/shared';
   import LineBadge from '../components/LineBadge.svelte';
   import AddPlace from '../components/AddPlace.svelte';
+  import NearbyDepartures from '../components/NearbyDepartures.svelte';
 
   let { data }: { data: AppData } = $props();
   let adding = $state(false);
@@ -26,6 +27,8 @@
 </script>
 
 <button class="primary big" onclick={() => navigate({ name: 'plan', mode: 'now' })}>🔍 {$t('whereTo')}</button>
+
+<NearbyDepartures {data} />
 
 <div class="row-head">
   <h2>{$t('myPlaces')}</h2>

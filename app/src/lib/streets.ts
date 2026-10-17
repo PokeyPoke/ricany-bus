@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
-import { StreetGraph, haversine, type StreetsFile } from '@rb/shared';
+import { DETOUR, StreetGraph, haversine, walkSec, type StreetsFile } from '@rb/shared';
 import { DATA_BASE } from '../config';
-import { streetWays, type Pt } from '../router/ways';
+import { straightWays, streetWays, type Pt } from '../router/ways';
 
 /** The street graph on the page itself (the router worker loads its own copy); null until loaded or if unavailable. */
 export const streetGraph = writable<StreetGraph | null>(null);
@@ -17,16 +17,20 @@ export function useStreets(): void {
 }
 
 /**
- * The `n` items nearest to `from` on foot, with walking meters: street meters when the graph is loaded
- * (candidates pre-selected by straight-line distance), otherwise straight-line meters.
+ * The `n` items nearest to `from` on foot, ranked by walking time: along streets when the graph is loaded
+ * (candidates pre-selected by straight-line distance), otherwise straight-line meters with the usual detour.
+ * `m` is the walked (or straight-line) distance in meters, `sec` the walking time.
  */
-export function nearestOnFoot<T extends Pt>(g: StreetGraph | null, from: Pt, items: T[], n: number, maxM = 2000): { item: T; m: number }[] {
+export function nearestOnFoot<T extends Pt>(g: StreetGraph | null, from: Pt, items: T[], n: number, maxM = 2000): { item: T; m: number; sec: number }[] {
   const byAir = items.map((item) => ({ item, m: haversine(from.lat, from.lon, item.lat, item.lon) }))
     .filter((x) => x.m <= maxM).sort((a, b) => a.m - b.m);
-  if (!g) return byAir.slice(0, n).map((x) => ({ item: x.item, m: Math.round(x.m) }));
-  const ways = streetWays(g);
-  return byAir.slice(0, n * 3)
-    .map((x) => ({ item: x.item, m: ways.walk(from, x.item, maxM * 1.6).m })) // Infinity: farther than the limit on foot
-    .filter((x) => x.m <= maxM * 1.6).sort((a, b) => a.m - b.m).slice(0, n)
-    .map((x) => ({ item: x.item, m: Math.round(x.m) }));
+  const ways = g ? streetWays(g) : straightWays;
+  return byAir.slice(0, g ? n * 3 : n)
+    .map((x) => {
+      const r = ways.walk(from, x.item, maxM * DETOUR);
+      // Infinity: beyond the street search; keep the straight-line estimate so far items still rank
+      return Number.isFinite(r.sec) ? { item: x.item, m: r.m, sec: r.sec } : { item: x.item, m: x.m, sec: walkSec(x.m) };
+    })
+    .filter((x) => x.sec <= walkSec(maxM)).sort((a, b) => a.sec - b.sec).slice(0, n)
+    .map((x) => ({ ...x, m: Math.round(x.m) }));
 }
