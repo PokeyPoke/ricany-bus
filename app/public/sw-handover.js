@@ -3,7 +3,8 @@
 let handover = false;
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.has('rb-prompt-v1').then((has) => {
-    if (has) return undefined;
+    // only when an older (auto-updating) version is running; a first visit installs normally, without a reload
+    if (has || !self.registration.active) return undefined;
     handover = true;
     return self.skipWaiting();
   }));
