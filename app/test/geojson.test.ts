@@ -21,11 +21,11 @@ describe('geojson', () => {
     const l = { ...line, directions: [{ directionId: 0, headsign: 'x', stops: [0, 1, 2, 0], shape: [] }] };
     const f = lineStopsGeoJson(groups, st, l, 0).features;
     expect(f.map((x) => x.properties.n)).toEqual([1, 2]);
-    expect(f[0].properties).toEqual({ gi: 0, n: 1, color: '#E4002B', text: '#FFFFFF', stopIdx: 0, number: '1', directionId: 0 });
+    expect(f[0].properties).toEqual({ gi: 0, n: 1, color: '#E4002B', text: '#FFFFFF', stopIdx: 0, number: '1', dir: 0 });
     expect(lineStopsGeoJson(groups, st, l, 5).features).toEqual([]);
   });
   it('lines, stops and bikes', () => {
-    expect(linesGeoJson([line]).features[0]).toEqual({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[14.65, 49.99], [14.65, 50.018]] }, properties: { routeId: 'L1731', number: '1', color: '#E4002B', directionId: 0 } });
+    expect(linesGeoJson([line]).features[0]).toEqual({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[14.65, 49.99], [14.65, 50.018]] }, properties: { routeId: 'L1731', number: '1', color: '#E4002B', dir: 0 } });
     expect(bikesGeoJson([{ uid: 9, name: 'B', lat: 1, lon: 2, bikes: 3, freeRacks: 1 }]).features[0]).toEqual({ type: 'Feature', geometry: { type: 'Point', coordinates: [2, 1] }, properties: { uid: 9, name: 'B', bikes: 3 } });
   });
   it('trip overlay draws buses through their stops and walks as straight lines', () => {

@@ -4,7 +4,8 @@
   import { navigate } from '../lib/nav';
   import { t } from '../lib/i18n';
   import { savedPlaces, recents, removePlace } from '../lib/places';
-  import { tripOverlay, highlightLine, planMarkers } from '../lib/ui';
+  import { tripOverlay, highlightLine, planMarkers, now } from '../lib/ui';
+  import { linesRunningOn } from '../router/timetable';
   import LineBadge from '../components/LineBadge.svelte';
   import AddPlace from '../components/AddPlace.svelte';
 
@@ -12,6 +13,9 @@
   let adding = $state(false);
   let editing = $state(false);
   const lines = $derived(LINE_ORDER.map((id) => data.lines.find((l) => l.routeId === id)).filter((l): l is LineRec => !!l));
+  const running = $derived(linesRunningOn(data.timetable, $now.date));
+  const activeLines = $derived(lines.filter((l) => running.has(l.routeId)));
+  const idleLines = $derived(lines.filter((l) => !running.has(l.routeId)));
 
   $effect(() => { if (!$savedPlaces.length) editing = false; });
   $effect(() => { tripOverlay.set(null); highlightLine.set(null); planMarkers.set({}); });
@@ -44,11 +48,21 @@
 {/if}
 
 <h2>{$t('lines')}</h2>
-<div class="chips">
-  {#each lines as l (l.routeId)}
-    <button class="line" aria-label={`${$t('lines')} ${l.number}`} onclick={() => navigate({ name: 'line', number: l.number, dir: 0 })}><LineBadge routeId={l.routeId} /></button>
-  {/each}
-</div>
+{#snippet lineChips(list: LineRec[])}
+  <div class="chips">
+    {#each list as l (l.routeId)}
+      <button class="line" aria-label={`${$t('lines')} ${l.number}`} onclick={() => navigate({ name: 'line', number: l.number, dir: 0 })}><LineBadge routeId={l.routeId} /></button>
+    {/each}
+  </div>
+{/snippet}
+{#if activeLines.length}
+  <p class="sub">{$t('linesActiveToday')}</p>
+  {@render lineChips(activeLines)}
+{/if}
+{#if idleLines.length}
+  <p class="sub">{$t('linesIdleToday')}</p>
+  <div class="idle">{@render lineChips(idleLines)}</div>
+{/if}
 
 <p class="muted small attr">{$t('attribution')}</p>
 
@@ -59,4 +73,6 @@
   .x { width: 44px; min-height: 44px; color: var(--bad); }
   .line { min-width: 44px; display: grid; place-items: center; }
   .attr { margin-top: 24px; }
+  .sub { margin: 10px 0 2px; font-weight: 700; font-size: 0.9rem; }
+  .idle { opacity: 0.5; }
 </style>

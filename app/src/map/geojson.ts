@@ -15,14 +15,14 @@ const point = (lon: number, lat: number, properties: Feature['properties']): Fea
 const lineStr = (coordinates: [number, number][], properties: Feature['properties']): Feature => ({ type: 'Feature', geometry: { type: 'LineString', coordinates }, properties });
 
 export const linesGeoJson = (lines: LineRec[]) =>
-  fc(lines.flatMap((l) => l.directions.map((d) => lineStr(d.shape, { routeId: l.routeId, number: l.number, color: l.color, directionId: d.directionId }))));
+  fc(lines.flatMap((l) => l.directions.map((d, dir) => lineStr(d.shape, { routeId: l.routeId, number: l.number, color: l.color, dir }))));
 
 export const groupsGeoJson = (groups: StopGroup[]) =>
   fc(groups.map((g, gi) => point(g.lon, g.lat, { gi, id: g.id, name: g.name, ring: ringKey(g.lines) })));
 
-/** Stops of one line direction, one point per stop group in travel order, numbered 1..n. */
-export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: LineRec, directionId: number): FC {
-  const dir = line.directions.find((d) => d.directionId === directionId);
+/** Stops of one line direction (index `dirIdx` into line.directions), one point per stop group in travel order, numbered 1..n. */
+export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: LineRec, dirIdx: number): FC {
+  const dir = line.directions[dirIdx];
   if (!dir) return fc([]);
   const seen = new Set<number>();
   const features: Feature[] = [];
@@ -31,7 +31,7 @@ export function lineStopsGeoJson(groups: StopGroup[], stops: StopRec[], line: Li
     if (seen.has(gi)) continue;
     seen.add(gi);
     const n = features.length + 1;
-    features.push(point(groups[gi].lon, groups[gi].lat, { gi, n, color: line.color, text: line.text, stopIdx, number: line.number, directionId }));
+    features.push(point(groups[gi].lon, groups[gi].lat, { gi, n, color: line.color, text: line.text, stopIdx, number: line.number, dir: dirIdx }));
   }
   return fc(features);
 }
@@ -52,12 +52,13 @@ export function arrowOffset(disp: [number, number], bearing: number, mapBearing 
 }
 
 /** offsets: screen-pixel displacement per tripId (from spreadOffsets). */
-export const busesGeoJson = (vehicles: Vehicle[], offsets: Record<string, [number, number]> = {}, mapBearing = 0) => fc(vehicles.map((v) => {
+/** `waiting`: trip ids of buses whose trip has not started yet (drawn faded) */
+export const busesGeoJson = (vehicles: Vehicle[], offsets: Record<string, [number, number]> = {}, mapBearing = 0, waiting: ReadonlySet<string> = new Set()) => fc(vehicles.map((v) => {
   const s = LINE_STYLE[v.routeId];
   const d = offsets[v.tripId] ?? [0, 0];
   const bearing = v.bearing ?? -1;
   return point(v.lon, v.lat, {
-    tripId: v.tripId, routeId: v.routeId, number: s.number, color: s.color, text: s.text, bearing,
+    tripId: v.tripId, routeId: v.routeId, number: s.number, color: s.color, text: s.text, bearing, waiting: waiting.has(v.tripId) ? 1 : 0,
     off: d, disp: Math.hypot(d[0], d[1]), aoff: bearing >= 0 ? arrowOffset(d, bearing, mapBearing) : [0, 0],
   });
 }));

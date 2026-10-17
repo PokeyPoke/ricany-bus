@@ -37,3 +37,11 @@ export function stopTimetable(tt: TimetableFile, routeId: FreeRouteId, direction
   }
   return out;
 }
+
+/** Lines with at least one trip on the service day `date`. */
+export function linesRunningOn(tt: TimetableFile, date: string): Set<FreeRouteId> {
+  const active = new Set(tt.servicesByDate[date] ?? []);
+  const out = new Set<FreeRouteId>();
+  for (const p of tt.patterns) if (!out.has(p.routeId) && p.trips.some((t) => active.has(t.service))) out.add(p.routeId);
+  return out;
+}

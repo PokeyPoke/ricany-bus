@@ -1,5 +1,5 @@
 import { writable, type Writable } from 'svelte/store';
-import { NEXTBIKE_CITY_UID, addDays, type DelaysResponse, type PositionsResponse, type Vehicle } from '@rb/shared';
+import { NEXTBIKE_CITY_UID, addDays, daysBetween, type DelaysResponse, type PositionsResponse, type Vehicle } from '@rb/shared';
 import { NEXTBIKE_URL, WORKER_URL } from '../config';
 import type { BikeStation } from '../router/types';
 import type { Network } from '../router/network';
@@ -101,6 +101,19 @@ export function resolveVehicleTrip(v: Vehicle, netFor: (d: string) => Network): 
     }
   }
   return null;
+}
+
+/**
+ * A bus signed on to a trip that has not reached its first departure yet (on layover, often parked off the route).
+ * Returns that departure (seconds after `net.date` midnight) and the first stop's index, or null if the trip has started.
+ */
+export function waitingStart(v: Vehicle, netFor: (d: string) => Network, nowDate: string, nowSec: number): { net: Network; dep: number; stop: number } | null {
+  const r = resolveVehicleTrip(v, netFor);
+  if (!r) return null;
+  const pat = r.net.patterns[r.p];
+  const dep = pat.trips[r.trip].dep[0];
+  const nowRel = daysBetween(r.net.date, nowDate) * 86400 + nowSec;
+  return nowRel < dep ? { net: r.net, dep, stop: pat.stops[0] } : null;
 }
 
 /** age of the last successful bike fetch in whole minutes when older than 5 min, else null */

@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { formatHM } from '@rb/shared';
   import type { AppData } from '../lib/data';
-  import { positions, delays, freshVehicles, resolveVehicleTrip, usePositions, positionsOk } from '../lib/live';
+  import { positions, delays, freshVehicles, resolveVehicleTrip, waitingStart, usePositions, positionsOk } from '../lib/live';
   import { netFor } from '../lib/network';
   import { tripDelay } from '../router/delays';
   import { now, focusPoints, tripOverlay, highlightLine } from '../lib/ui';
@@ -18,6 +18,7 @@
   const pat = $derived(res ? res.net.patterns[res.p] : null);
   const trip = $derived(res && pat ? pat.trips[res.trip] : null);
   const hm = (sec: number) => formatHM(sec);
+  const waiting = $derived(v ? waitingStart(v, (d) => netFor(data, d), $now.date, $now.sec) : null);
   const stopsList = $derived.by(() => {
     if (!v || !res || !pat || !trip) return [];
     const cur = v.stopSeq;
@@ -55,6 +56,7 @@
   <p class="muted small">{ts}</p>
 {:else}
   {@const d = tripDelay($delays, tripId, v.startDate, v.stopSeq ?? 0)}
+  {#if waiting}<p class="waiting">{$t('busWaiting', { time: hm(waiting.dep), stop: waiting.net.stops[waiting.stop].name })}</p>{/if}
   <p>{#if d != null}<DelayBadge sec={d} live={true} /> {/if}<span class="muted small">{ts}</span></p>
   <ul class="list">
     {#each stopsList as s (s.pos)}
@@ -70,5 +72,6 @@
 <style>
   .warn { color: var(--warn); }
   .cur { font-weight: 800; }
+  .waiting { font-weight: 700; }
   .eta { display: inline-block; min-width: 3.4em; font-variant-numeric: tabular-nums; font-weight: 700; }
 </style>

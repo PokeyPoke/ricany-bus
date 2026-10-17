@@ -61,6 +61,18 @@ describe('buildData', () => {
     expect(l1.directions[0].shape).toEqual([[14.65, 49.99], [14.655, 49.995], [14.66, 50]]);
     expect(l1.directions[1].shape).toEqual([[14.66, 50], [14.655, 49.995], [14.65, 49.99]]);
   });
+  it('adds route variants that serve stops the main one misses, most frequent first', () => {
+    const r = structuredClone(raw);
+    const base = r.trips.find((t) => t.id === '1731_1')!;
+    const st = (stopIds: string[], start: number) => stopIds.map((stopId, i) => ({ seq: i + 1, stopId, arr: start + i * 300, dep: start + i * 300 }));
+    // a branch to UD (not on the main A–B–C pattern), run three times; and a short A–B working, a subset of the main one
+    for (let k = 0; k < 3; k++) r.trips.push({ ...base, id: `br${k}`, headsign: 'Delta', shapeId: '', stopTimes: st(['UA', 'UB', 'UD'], 30000 + k * 3600) });
+    r.trips.push({ ...base, id: 'short', headsign: 'Beta', shapeId: '', stopTimes: st(['UA', 'UB'], 40000) });
+    const l1 = buildData(r, '20261015', 'now').lines.lines.find((l) => l.routeId === 'L1731')!;
+    const d0 = l1.directions.filter((d) => d.directionId === 0);
+    expect(d0.map((d) => d.headsign)).toEqual(['Delta', 'Gamma']);
+    expect(l1.directions.map((d) => d.directionId)).toEqual([0, 0, 1]);
+  });
   it('writes meta', () => {
     expect(data.meta).toEqual({ feedStart: '20261015', feedEnd: '20261028', generatedAt: '2026-10-15T04:30:00Z', tripCount: 4 });
   });

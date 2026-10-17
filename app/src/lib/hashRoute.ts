@@ -20,7 +20,8 @@ function decPlace(s: string | null): PlaceRef | undefined {
   const p = { lat: Number(lat), lon: Number(lon), name: rest.join(',') };
   return Number.isFinite(p.lat) && Number.isFinite(p.lon) && lat !== '' && lon !== '' ? p : undefined;
 }
-const dir01 = (v: string | null): number => (Number(v) === 1 ? 1 : 0);
+/** index into LineRec.directions (a direction or one of its route variants); anything else → 0 */
+const dirIdx = (v: string | null): number => { const n = Number(v); return Number.isInteger(n) && n >= 0 && n < 16 ? n : 0; };
 const opt = (v: string | null) => v ?? undefined;
 
 export function parseHash(hash: string): Route {
@@ -41,7 +42,7 @@ export function parseHash(hash: string): Route {
     case 'stop':
       return parts[1] ? { name: 'stop', stopId: parts[1] } : { name: 'home' };
     case 'line':
-      return parts[1] ? { name: 'line', number: parts[1], dir: dir01(q.get('dir')), stopId: opt(q.get('stop')) } : { name: 'home' };
+      return parts[1] ? { name: 'line', number: parts[1], dir: dirIdx(q.get('dir')), stopId: opt(q.get('stop')) } : { name: 'home' };
     case 'about':
       return { name: 'about' };
     case 'bike': {
@@ -53,11 +54,11 @@ export function parseHash(hash: string): Route {
     case 'from': {
       if (!parts[1]) return { name: 'home' };
       const line = q.get('line') || undefined;
-      return { name: 'from', groupId: parts[1], line, dir: line ? dir01(q.get('dir')) : undefined };
+      return { name: 'from', groupId: parts[1], line, dir: line ? dirIdx(q.get('dir')) : undefined };
     }
     case 'ride': {
       const line = q.get('line'), from = q.get('from'), to = q.get('to');
-      return line && from && to ? { name: 'ride', line, dir: dir01(q.get('dir')), from, to } : { name: 'home' };
+      return line && from && to ? { name: 'ride', line, dir: dirIdx(q.get('dir')), from, to } : { name: 'home' };
     }
     default:
       return { name: 'home' };
