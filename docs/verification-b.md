@@ -30,3 +30,9 @@
 - Worker CPU/limits under peak load; behaviour after service hours (checked only during service).
 - Offline on a real device / installed PWA; only the Playwright service-worker simulation.
 - Stale/stale-on-error path against the real upstream (unit tests only).
+
+## Final whole-branch review (2026-10-17)
+- Re-ran on a clean checkout: unit tests (worker 11, shared 22, pipeline 19, app 112), `npm run typecheck` 0 errors, `npm run build`, and all 21 e2e tests pass.
+- Review Focus 1–5 (spec/plan) re-checked in code: `resolveVehicleTrip` matches on the feed's `startDate` (incl. the next calendar day for after-midnight trips); a truncated/garbage upstream body throws in `prefilter`/decode, so the Worker never caches it and serves stale (`X-Stale: 1`, ≤ 120 s) or 503; `downstreamStops` walks branch patterns in list order; the poller ticks immediately on `visibilitychange` back to visible; offline e2e is green.
+- Repo and full git history contain no Cloudflare account id (no 32-hex strings) and no owner email; the Worker workflow reads `CLOUDFLARE_ACCOUNT_ID` from secrets.
+- Minor, not fixed: a vehicle with no `startDate` in the feed resolves to no trip (bus sheet shows nothing) instead of falling back to today; PID always sends `startDate`.
