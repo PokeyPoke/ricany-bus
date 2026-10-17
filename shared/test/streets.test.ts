@@ -17,7 +17,7 @@ function grid(over: Record<string, number> = {}): StreetsFile {
 describe('StreetGraph', () => {
   it('snaps to the nearest street and measures along it', () => {
     const g = new StreetGraph(grid());
-    const s = g.snap(LAT + 0.0002, 14.6 + DLO / 2)!; // just north of edge 0–1, midway
+    const s = g.snap(LAT + 0.0002, 14.6 + DLO / 2)!.cands[0]; // just north of edge 0–1, midway
     expect(s.edge).toBe(0);
     expect(s.gap).toBeGreaterThan(15);
     expect(s.gap).toBeLessThan(30);
@@ -65,6 +65,21 @@ describe('StreetGraph', () => {
     const from = g.snap(LAT, 14.6)!;
     expect(g.meters(g.search(from, 'walk', 5000), g.snap(LAT, 14.6 + 2 * DLO, 'bike')!)).toBeNull();
     expect(g.meters(g.search(from, 'walk', 50), g.snap(LAT + DLA, 14.6 + DLO)!)).toBeNull();
+  });
+
+  it('joins every street near the nearest one, so a sidewalk does not force a detour', () => {
+    // a "sidewalk" 5 m north of edge 0–1, connected to the grid only at node 2's end
+    const f = grid();
+    const n = f.nodes.length / 2;
+    f.nodes.push(Math.round((LAT + 0.000045) * 1e5), Math.round(14.6 * 1e5), Math.round((LAT + 0.000045) * 1e5), Math.round((14.6 + 2 * DLO) * 1e5));
+    f.edges.push(n, n + 1, WALK, n + 1, 2, WALK);
+    f.geom.push([], []);
+    const g = new StreetGraph(f);
+    const from = g.snap(LAT + 0.00006, 14.6 + DLO * 0.1)!; // on the sidewalk side, nearest to the sidewalk
+    expect(from.cands.length).toBeGreaterThanOrEqual(2);
+    const to = g.snap(LAT, 14.6)!;
+    const m = g.meters(g.search(from, 'walk', 5000), to)!;
+    expect(m).toBeLessThan(haversine(LAT, 14.6, LAT, 14.6 + DLO * 0.1) + 15);
   });
 
   it('decodes delta-coded intermediate points', () => {

@@ -69,7 +69,7 @@ export function tripGeoJson(it: Itinerary, data: AppData): FC {
       const coords = p.stops.slice(l.boardPos, l.alightPos + 1).map((i) => [data.stops[i].lon, data.stops[i].lat] as [number, number]);
       return lineStr(coords, { kind: 'bus', color: LINE_STYLE[l.routeId].color });
     }
-    return lineStr([[l.from.lon, l.from.lat], [l.to.lon, l.to.lat]], { kind: l.kind, color: l.kind === 'bike' ? '#2e9d4a' : '#555555' });
+    return lineStr(l.path ?? [[l.from.lon, l.from.lat], [l.to.lon, l.to.lat]], { kind: l.kind, color: l.kind === 'bike' ? '#2e9d4a' : '#555555' });
   }));
 }
 

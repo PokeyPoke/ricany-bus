@@ -1,10 +1,11 @@
-import { MAX_ACCESS_WALK_M, addDays, daysBetween, haversine, walkSec, type StopRec } from '@rb/shared';
+import { DETOUR, MAX_ACCESS_WALK_M, MAX_TRANSFER_WALK_M, WALK_SPEED_MPS, addDays, daysBetween, haversine, type StopRec, type StreetGraph } from '@rb/shared';
 import type { Network } from './network';
 import { raptor, type Journey, type RideStep } from './raptor';
 import { bikeAccessOptions, bikeEgressOptions, bikeOnly } from './bike';
 import type { BikeStation, Itinerary, Leg, PlaceRef, PlanRequest, PlanResult, StopAccess } from './types';
+import { straightWays, streetWays, type Ways } from './ways';
 
-export interface PlanContext { stops: StopRec[]; netFor(date: string): Network }
+export interface PlanContext { stops: StopRec[]; netFor(date: string): Network; streets?: StreetGraph | null }
 
 export const MAX_RESULTS = 4;
 const HORIZON = 3 * 3600;
@@ -14,25 +15,25 @@ const MAX_ARRIVE_BY_RUNS = 300;
 
 const placeOf = (s: StopRec): PlaceRef => ({ lat: s.lat, lon: s.lon, name: s.name });
 
-export function walkOptions(stops: StopRec[], place: PlaceRef, dir: 'access' | 'egress', maxM = MAX_ACCESS_WALK_M): StopAccess[] {
+export function walkOptions(stops: StopRec[], place: PlaceRef, dir: 'access' | 'egress', maxM = MAX_ACCESS_WALK_M, ways: Ways = straightWays): StopAccess[] {
   const out: StopAccess[] = [];
   stops.forEach((s, i) => {
-    const m = haversine(place.lat, place.lon, s.lat, s.lon);
-    if (m > maxM) return;
-    const sec = walkSec(m);
+    if (haversine(place.lat, place.lon, s.lat, s.lon) > maxM) return;
     const sp = placeOf(s);
+    const from = dir === 'access' ? place : sp, to = dir === 'access' ? sp : place;
+    const r = ways.walk(from, to, maxM * DETOUR);
+    if (r.m > maxM * DETOUR) return;
     out.push({
-      stop: i, sec,
-      legs: (start) => (m < 1 ? [] : [{
-        kind: 'walk', from: dir === 'access' ? place : sp, to: dir === 'access' ? sp : place,
-        depart: start, arrive: start + sec, meters: Math.round(m),
+      stop: i, sec: r.sec,
+      legs: (start) => (r.m < 1 ? [] : [{
+        kind: 'walk', from, to, depart: start, arrive: start + r.sec, meters: Math.round(r.m), path: r.path?.(),
       }]),
     });
   });
   return out;
 }
 
-export function toItinerary(net: Network, j: Journey): Itinerary {
+export function toItinerary(net: Network, j: Journey, ways: Ways = straightWays): Itinerary {
   const legs: Leg[] = [];
   const first = j.steps.find((s): s is RideStep => s.kind === 'ride')!;
   const firstDep = net.patterns[first.p].trips[first.trip].dep[first.boardPos];
@@ -51,7 +52,8 @@ export function toItinerary(net: Network, j: Journey): Itinerary {
       t = tr.arr[s.alightPos];
     } else {
       const a = net.stops[s.from], b = net.stops[s.to];
-      legs.push({ kind: 'walk', from: placeOf(a), to: placeOf(b), depart: t, arrive: t + s.sec, meters: Math.round(haversine(a.lat, a.lon, b.lat, b.lon)) });
+      const r = ways.walk(a, b, MAX_TRANSFER_WALK_M * 2);
+      legs.push({ kind: 'walk', from: placeOf(a), to: placeOf(b), depart: t, arrive: t + s.sec, meters: Math.round(r.m), path: r.path?.() });
       t += s.sec;
     }
   }
@@ -70,7 +72,7 @@ function dedupe(list: Itinerary[]): Itinerary[] {
   return list.filter((it) => { const s = signature(it); if (seen.has(s)) return false; seen.add(s); return true; });
 }
 
-function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAccess[], egr: StopAccess[], rolled = false): Itinerary[] {
+function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAccess[], egr: StopAccess[], ways: Ways, rolled = false): Itinerary[] {
   const net = ctx.netFor(date);
   const out: Itinerary[] = [];
   let t = sec;
@@ -79,7 +81,7 @@ function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAcc
   for (let iter = 0; iter < 12 && out.length < MAX_RESULTS * 2 && (base === null || t < base + HORIZON); iter++) {
     const js = raptor(net, acc, egr, t);
     if (!js.length) break;
-    out.push(...js.map((j) => toItinerary(net, j)));
+    out.push(...js.map((j) => toItinerary(net, j, ways)));
     const first = Math.min(...js.map((j) => j.firstDepart - j.access.sec));
     base ??= first;
     t = first + 60;
@@ -87,7 +89,7 @@ function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAcc
   return dedupe(out).sort((a, b) => a.arrive - b.arrive || b.depart - a.depart).slice(0, MAX_RESULTS);
 }
 
-function searchArriveBy(ctx: PlanContext, date: string, target: number, acc: StopAccess[], egr: StopAccess[]): Itinerary[] {
+function searchArriveBy(ctx: PlanContext, date: string, target: number, acc: StopAccess[], egr: StopAccess[], ways: Ways): Itinerary[] {
   const net = ctx.netFor(date);
   const cands = new Set<number>();
   for (const a of acc) {
@@ -100,7 +102,7 @@ function searchArriveBy(ctx: PlanContext, date: string, target: number, acc: Sto
   }
   const out: Itinerary[] = [];
   for (const d of [...cands].sort((x, y) => y - x).slice(0, MAX_ARRIVE_BY_RUNS)) {
-    for (const j of raptor(net, acc, egr, d)) if (j.arrive <= target) out.push(toItinerary(net, j));
+    for (const j of raptor(net, acc, egr, d)) if (j.arrive <= target) out.push(toItinerary(net, j, ways));
     if (dedupe(out).length >= MAX_RESULTS) break;
   }
   return dedupe(out).sort((a, b) => b.depart - a.depart || a.arrive - b.arrive).slice(0, MAX_RESULTS);
@@ -109,51 +111,51 @@ function searchArriveBy(ctx: PlanContext, date: string, target: number, acc: Sto
 /** Seconds since req.date midnight, so itineraries on later days compare correctly. */
 export const absTime = (baseDate: string, it: Itinerary, field: 'depart' | 'arrive') => daysBetween(baseDate, it.date) * 86400 + it[field];
 
-export function search(ctx: PlanContext, req: PlanRequest, acc: StopAccess[], egr: StopAccess[], rollover: boolean): Itinerary[] {
+export function search(ctx: PlanContext, req: PlanRequest, acc: StopAccess[], egr: StopAccess[], rollover: boolean, ways: Ways = straightWays): Itinerary[] {
   if (!acc.length || !egr.length) return [];
-  if (req.mode === 'arr') return searchArriveBy(ctx, req.date, req.sec, acc, egr);
-  let r = searchForward(ctx, req.date, req.sec, acc, egr);
-  for (let d = 1; rollover && !r.length && d <= ROLLOVER_DAYS; d++) r = searchForward(ctx, addDays(req.date, d), 0, acc, egr, true);
+  if (req.mode === 'arr') return searchArriveBy(ctx, req.date, req.sec, acc, egr, ways);
+  let r = searchForward(ctx, req.date, req.sec, acc, egr, ways);
+  for (let d = 1; rollover && !r.length && d <= ROLLOVER_DAYS; d++) r = searchForward(ctx, addDays(req.date, d), 0, acc, egr, ways, true);
   return r;
 }
 
-function walkItinerary(req: PlanRequest, sec: number, meters: number): Itinerary {
+function walkItinerary(req: PlanRequest, sec: number, meters: number, path?: [number, number][]): Itinerary {
   const start = req.mode === 'dep' ? req.sec : req.sec - sec;
   return {
     date: req.date, depart: start, arrive: start + sec, rides: 0, free: true,
-    legs: [{ kind: 'walk', from: req.from, to: req.to, depart: start, arrive: start + sec, meters: Math.round(meters) }],
+    legs: [{ kind: 'walk', from: req.from, to: req.to, depart: start, arrive: start + sec, meters: Math.round(meters), path }],
   };
 }
 
 export function planTrip(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[] | null): PlanResult {
-  const accW = walkOptions(ctx.stops, req.from, 'access');
-  const egrW = walkOptions(ctx.stops, req.to, 'egress');
-  const directM = haversine(req.from.lat, req.from.lon, req.to.lat, req.to.lon);
-  const wsec = walkSec(directM);
-  const walk = wsec <= WALK_ONLY_MAX ? walkItinerary(req, wsec, directM) : null;
+  const ways = ctx.streets ? streetWays(ctx.streets) : straightWays;
+  const accW = walkOptions(ctx.stops, req.from, 'access', MAX_ACCESS_WALK_M, ways);
+  const egrW = walkOptions(ctx.stops, req.to, 'egress', MAX_ACCESS_WALK_M, ways);
+  const direct = ways.walk(req.from, req.to, WALK_ONLY_MAX * WALK_SPEED_MPS);
+  const walk = direct.sec <= WALK_ONLY_MAX ? walkItinerary(req, direct.sec, direct.m, direct.path?.()) : null;
 
-  let free = search(ctx, req, accW, egrW, true);
+  let free = search(ctx, req, accW, egrW, true, ways);
   if (walk) {
     free = req.mode === 'dep'
       ? free.filter((it) => absTime(req.date, it, 'arrive') < walk.arrive)
       : free.filter((it) => absTime(req.date, it, 'depart') > walk.depart);
   }
-  const bike = planBike(ctx, req, bikes, free, accW, egrW);
+  const bike = planBike(ctx, req, bikes, free, accW, egrW, ways);
   return { free, bike, walk, nearOrigin: accW.length, nearDest: egrW.length };
 }
 
 const BIKE_GAIN = 5 * 60;
 
-function planBike(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[] | null, free: Itinerary[], accW: StopAccess[], egrW: StopAccess[]): Itinerary[] {
+function planBike(ctx: PlanContext, req: PlanRequest, bikes: BikeStation[] | null, free: Itinerary[], accW: StopAccess[], egrW: StopAccess[], ways: Ways): Itinerary[] {
   if (!bikes?.length) return [];
-  const accB = bikeAccessOptions(ctx.stops, req.from, bikes);
-  const egrB = bikeEgressOptions(ctx.stops, req.to, bikes);
-  const mixed = [...search(ctx, req, accB, egrW, false), ...search(ctx, req, accW, egrB, false)].filter((it) => !it.free);
+  const accB = bikeAccessOptions(ctx.stops, req.from, bikes, ways);
+  const egrB = bikeEgressOptions(ctx.stops, req.to, bikes, ways);
+  const mixed = [...search(ctx, req, accB, egrW, false, ways), ...search(ctx, req, accW, egrB, false, ways)].filter((it) => !it.free);
   const better = req.mode === 'dep'
     ? (it: Itinerary) => !free.length || absTime(req.date, it, 'arrive') <= Math.min(...free.map((f) => absTime(req.date, f, 'arrive'))) - BIKE_GAIN
     : (it: Itinerary) => !free.length || absTime(req.date, it, 'depart') >= Math.max(...free.map((f) => absTime(req.date, f, 'depart'))) + BIKE_GAIN;
   const out = dedupe(mixed.filter(better)).sort((a, b) => a.arrive - b.arrive).slice(0, 2);
-  const only = bikeOnly(req.from, req.to, bikes);
+  const only = bikeOnly(req.from, req.to, bikes, ways);
   if (only) {
     const start = req.mode === 'dep' ? req.sec : req.sec - only.sec;
     out.push({ date: req.date, depart: start, arrive: start + only.sec, rides: 0, free: false, legs: only.legs(start) });

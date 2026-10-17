@@ -21,19 +21,31 @@ export type StreetMode = 'walk' | 'bike';
 const Q = 1e5;
 const CELL = 0.002; // degrees, about 150–220 m
 
-/** A point projected onto the nearest usable street. */
-export interface Snap {
-  lat: number; lon: number;
+/** Where a point joins one street: its projection onto edge `edge`. */
+export interface Cand {
   edge: number;
   /** meters from node a along the edge */
   off: number;
   /** straight-line meters from the original point to the street */
   gap: number;
-  /** the original point */
-  from: [number, number];
+  /** the projected point */
+  lat: number; lon: number;
+}
+/**
+ * A point attached to the street network. It joins every usable street within SNAP_SLACK_M of the nearest one,
+ * so a point next to a separately mapped sidewalk can still step onto the road (and vice versa).
+ */
+export interface Snap { lat: number; lon: number; cands: Cand[] }
+
+export interface Tree {
+  dist: Float64Array;
+  /** edge used to reach each node, or -2 - k when reached directly from source candidate k */
+  prev: Int32Array;
+  source: Snap; mode: StreetMode; maxM: number;
 }
 
-export interface Tree { dist: Float64Array; prev: Int32Array; source: Snap; mode: StreetMode; maxM: number }
+const SNAP_SLACK_M = 25;
+const MAX_CANDS = 6;
 
 class Heap {
   private k: number[] = [];
@@ -141,35 +153,41 @@ export class StreetGraph {
     return mode === 'walk' ? (this.flags[e] & WALK) !== 0 : (this.flags[e] & (BIKE_FWD | BIKE_BACK)) !== 0;
   }
 
-  /** Nearest point on a street usable by `mode`, within maxM meters. */
+  /** Attach a point to the streets usable by `mode`; null if none is within maxM meters. */
   snap(lat: number, lon: number, mode: StreetMode = 'walk', maxM = 300): Snap | null {
     const kx = 111_320 * Math.cos((lat * Math.PI) / 180), ky = 110_574;
     const cy = Math.floor(lat / CELL), cx = Math.floor(lon / CELL);
-    const r = Math.ceil(maxM / (CELL * Math.min(kx, ky))) + 1;
-    let best: Snap | null = null, bestD = maxM;
+    const cellM = CELL * Math.min(kx, ky);
+    const R = Math.ceil(maxM / cellM) + 1;
+    const best = new Map<number, Cand>(); // nearest projection per edge
+    let minD = maxM;
     const seen = new Set<number>();
-    for (let y = cy - r; y <= cy + r; y++) {
-      for (let x = cx - r; x <= cx + r; x++) {
-        for (const e of this.grid.get(this.cellKey(y, x)) ?? []) {
-          if (seen.has(e) || !this.usable(e, mode)) continue;
-          seen.add(e);
-          const p = this.pts[e];
-          for (let i = 0; i + 3 < p.length; i += 2) {
-            const ax = (p[i + 1] - lon) * kx, ay = (p[i] - lat) * ky;
-            const bx = (p[i + 3] - lon) * kx, by = (p[i + 2] - lat) * ky;
-            const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
-            const t = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
-            const px = ax + t * dx, py = ay + t * dy, d = Math.hypot(px, py);
-            if (d < bestD) {
-              bestD = d;
-              const c = this.cum[e];
-              best = { lat: lat + py / ky, lon: lon + px / kx, edge: e, off: c[i / 2] + t * (c[i / 2 + 1] - c[i / 2]), gap: d, from: [lat, lon] };
+    // rings of cells outward; anything in ring r+1 is at least r cells away
+    for (let r = 0; r <= R && (r - 1) * cellM <= Math.min(maxM, minD + SNAP_SLACK_M); r++) {
+      for (let y = cy - r; y <= cy + r; y++) {
+        for (let x = cx - r; x <= cx + r; x++) {
+          if (Math.max(Math.abs(y - cy), Math.abs(x - cx)) !== r) continue;
+          for (const e of this.grid.get(this.cellKey(y, x)) ?? []) {
+            if (seen.has(e) || !this.usable(e, mode)) continue;
+            seen.add(e);
+            const p = this.pts[e], c = this.cum[e];
+            for (let i = 0; i + 3 < p.length; i += 2) {
+              const ax = (p[i + 1] - lon) * kx, ay = (p[i] - lat) * ky;
+              const bx = (p[i + 3] - lon) * kx, by = (p[i + 2] - lat) * ky;
+              const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+              const t = l2 > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / l2)) : 0;
+              const px = ax + t * dx, py = ay + t * dy, d = Math.hypot(px, py);
+              if (d > maxM || d >= (best.get(e)?.gap ?? Infinity)) continue;
+              best.set(e, { edge: e, off: c[i / 2] + t * (c[i / 2 + 1] - c[i / 2]), gap: d, lat: lat + py / ky, lon: lon + px / kx });
+              if (d < minD) minD = d;
             }
           }
         }
       }
     }
-    return best;
+    if (!best.size) return null;
+    const cands = [...best.values()].filter((c) => c.gap <= minD + SNAP_SLACK_M).sort((a, b) => a.gap - b.gap).slice(0, MAX_CANDS);
+    return { lat, lon, cands };
   }
 
   private canGo(e: number, fromNode: number, mode: StreetMode) {
@@ -178,15 +196,18 @@ export class StreetGraph {
     return this.ea[e] === fromNode ? (f & BIKE_FWD) !== 0 : (f & BIKE_BACK) !== 0;
   }
 
-  /** Shortest street meters from `s` to every node, up to maxM. */
+  /** Shortest meters (off-street gap included) from `s` to every node, up to maxM. */
   search(s: Snap, mode: StreetMode, maxM: number): Tree {
     const n = this.nodeCount;
     const dist = new Float64Array(n).fill(Infinity);
     const prev = new Int32Array(n).fill(-1);
     const h = new Heap();
-    const e0 = s.edge, a0 = this.ea[e0], b0 = this.eb[e0];
-    if (this.canGo(e0, b0, mode)) { dist[a0] = s.off; prev[a0] = -2; h.push(s.off, a0); }
-    if (this.canGo(e0, a0, mode) && this.len[e0] - s.off < dist[b0]) { dist[b0] = this.len[e0] - s.off; prev[b0] = -2; h.push(dist[b0], b0); }
+    s.cands.forEach((c, k) => {
+      const e = c.edge, a = this.ea[e], b = this.eb[e];
+      // reaching node a means travelling b→a along the edge, and vice versa
+      if (this.canGo(e, b, mode) && c.gap + c.off < dist[a]) { dist[a] = c.gap + c.off; prev[a] = -2 - k; h.push(dist[a], a); }
+      if (this.canGo(e, a, mode) && c.gap + this.len[e] - c.off < dist[b]) { dist[b] = c.gap + this.len[e] - c.off; prev[b] = -2 - k; h.push(dist[b], b); }
+    });
     while (h.size) {
       const [d, u] = h.pop();
       if (d > dist[u] || d > maxM) continue;
@@ -201,57 +222,58 @@ export class StreetGraph {
     return { dist, prev, source: s, mode, maxM };
   }
 
-  /** Street meters from the tree's source snap to `t` (not counting the off-street gaps), or null. */
-  private reach(tr: Tree, t: Snap): { m: number; via: number } | null {
-    const e = t.edge, a = this.ea[e], b = this.eb[e];
-    let m = Infinity, via = -1;
-    if (this.canGo(e, a, tr.mode) && tr.dist[a] + t.off < m) { m = tr.dist[a] + t.off; via = a; }
-    if (this.canGo(e, b, tr.mode) && tr.dist[b] + this.len[e] - t.off < m) { m = tr.dist[b] + this.len[e] - t.off; via = b; }
-    const s = tr.source;
-    if (s.edge === e) {
-      const fwd = t.off >= s.off;
-      if (this.canGo(e, fwd ? a : b, tr.mode) && Math.abs(t.off - s.off) < m) { m = Math.abs(t.off - s.off); via = -3; }
-    }
-    return m <= tr.maxM ? { m, via } : null;
+  /** Best way into `t`: total meters, the target candidate, and the entry node (or -3 - k: along source candidate k's edge). */
+  private reach(tr: Tree, t: Snap): { m: number; tc: number; via: number } | null {
+    let m = Infinity, tc = -1, via = -1;
+    t.cands.forEach((c, j) => {
+      const e = c.edge, a = this.ea[e], b = this.eb[e];
+      if (this.canGo(e, a, tr.mode) && tr.dist[a] + c.off + c.gap < m) { m = tr.dist[a] + c.off + c.gap; tc = j; via = a; }
+      if (this.canGo(e, b, tr.mode) && tr.dist[b] + this.len[e] - c.off + c.gap < m) { m = tr.dist[b] + this.len[e] - c.off + c.gap; tc = j; via = b; }
+      tr.source.cands.forEach((sc, k) => {
+        if (sc.edge !== e || !this.canGo(e, c.off >= sc.off ? a : b, tr.mode)) return;
+        const d = sc.gap + Math.abs(c.off - sc.off) + c.gap;
+        if (d < m) { m = d; tc = j; via = -3 - k; }
+      });
+    });
+    return m <= tr.maxM ? { m, tc, via } : null;
   }
 
   /** Total meters including both off-street gaps, or null if unreachable within the tree. */
   meters(tr: Tree, t: Snap): number | null {
-    const r = this.reach(tr, t);
-    return r ? r.m + tr.source.gap + t.gap : null;
+    return this.reach(tr, t)?.m ?? null;
   }
 
   /** Polyline from the tree's source point to `t`'s point as [lon, lat] pairs. */
   path(tr: Tree, t: Snap): [number, number][] | null {
     const r = this.reach(tr, t);
     if (!r) return null;
-    const s = tr.source;
-    const add = (out: [number, number][], lat: number, lon: number) => {
+    const s = tr.source, tc = t.cands[r.tc];
+    const out: [number, number][] = [];
+    const add = (lat: number, lon: number) => {
       const last = out[out.length - 1];
       if (!last || Math.abs(last[0] - lon) > 1e-7 || Math.abs(last[1] - lat) > 1e-7) out.push([lon, lat]);
     };
-    if (r.via === -3) {
-      const out: [number, number][] = [];
-      add(out, s.from[0], s.from[1]); add(out, s.lat, s.lon);
-      for (const q of this.slice(s.edge, s.off, t.off)) add(out, q[1], q[0]);
-      add(out, t.lat, t.lon); add(out, t.from[0], t.from[1]);
-      return out;
-    }
-    // walk back from the target's entry node to the source edge
     const segs: [number, number][][] = [];
-    segs.push(this.slice(t.edge, r.via === this.ea[t.edge] ? 0 : this.len[t.edge], t.off));
-    let u = r.via;
-    while (tr.prev[u] >= 0) {
-      const e = tr.prev[u];
-      const fromA = this.eb[e] === u; // traversed a→b
-      segs.push(fromA ? this.slice(e, 0, this.len[e]) : this.slice(e, this.len[e], 0));
-      u = fromA ? this.ea[e] : this.eb[e];
+    let sc: Cand;
+    if (r.via <= -3) {
+      sc = s.cands[-3 - r.via];
+      segs.push(this.slice(sc.edge, sc.off, tc.off));
+    } else {
+      // walk back from the target's entry node to the source candidate
+      segs.push(this.slice(tc.edge, r.via === this.ea[tc.edge] ? 0 : this.len[tc.edge], tc.off));
+      let u = r.via;
+      while (tr.prev[u] >= 0) {
+        const e = tr.prev[u];
+        const fromA = this.eb[e] === u; // traversed a→b
+        segs.push(fromA ? this.slice(e, 0, this.len[e]) : this.slice(e, this.len[e], 0));
+        u = fromA ? this.ea[e] : this.eb[e];
+      }
+      sc = s.cands[-2 - tr.prev[u]];
+      segs.push(this.slice(sc.edge, sc.off, u === this.ea[sc.edge] ? 0 : this.len[sc.edge]));
     }
-    segs.push(this.slice(s.edge, s.off, u === this.ea[s.edge] ? 0 : this.len[s.edge]));
-    const out: [number, number][] = [];
-    add(out, s.from[0], s.from[1]); add(out, s.lat, s.lon);
-    for (let i = segs.length - 1; i >= 0; i--) for (const q of segs[i]) add(out, q[1], q[0]);
-    add(out, t.lat, t.lon); add(out, t.from[0], t.from[1]);
+    add(s.lat, s.lon); add(sc.lat, sc.lon);
+    for (let i = segs.length - 1; i >= 0; i--) for (const q of segs[i]) add(q[1], q[0]);
+    add(tc.lat, tc.lon); add(t.lat, t.lon);
     return out;
   }
 
