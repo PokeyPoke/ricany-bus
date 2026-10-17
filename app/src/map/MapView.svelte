@@ -288,7 +288,12 @@
   });
   $effect(() => {
     if (!gen || !map) return;
-    for (const id of ['lines-hl', 'lines-hl-casing']) if (map.getLayer(id)) map.setFilter(id, ['==', ['get', 'routeId'], $highlightLine ?? ''] as maplibregl.FilterSpecification);
+    // in a line view only the chosen direction is drawn bold: other branches (line 1's OÁZA / Kuří ends) stay faint
+    const sel = $lineSelection;
+    const dirIdx = sel && data.lines.find((l) => l.number === sel.number)?.routeId === $highlightLine ? sel.dir : null;
+    const hl: unknown[] = ['==', ['get', 'routeId'], $highlightLine ?? ''];
+    const filter = dirIdx == null ? hl : ['all', hl, ['==', ['get', 'dir'], dirIdx]];
+    for (const id of ['lines-hl', 'lines-hl-casing']) if (map.getLayer(id)) map.setFilter(id, filter as maplibregl.FilterSpecification);
     const dim = !!($highlightLine || $tripOverlay);
     if (map.getLayer('lines')) map.setPaintProperty('lines', 'line-opacity', dim ? 0.2 : 0.9);
     if (map.getLayer('lines-casing')) map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.2 : 0.9);
