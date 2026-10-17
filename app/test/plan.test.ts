@@ -63,11 +63,11 @@ describe('dedupe', () => {
   const walk = (a: number, b: number, meters: number): Leg => ({ kind: 'walk', from: p, to: p, depart: a, arrive: b, meters });
   const bus = (tripId: string, from: number, a: number, b: number): Leg => ({ kind: 'bus', routeId: 'L1732', headsign: 'h', tripId, serviceDate: '20261019', pattern: 0,
     boardPos: from, alightPos: 9, boardSeq: from, alightSeq: 9, from, to: 9, depart: a, arrive: b, stopCount: 9 - from });
-  const it = (legs: Leg[]): Itinerary => ({ date: '20261019', depart: legs[0].depart, arrive: legs[legs.length - 1].arrive, rides: 1, free: true, legs });
+  const itin = (legs: Leg[]): Itinerary => ({ date: '20261019', depart: legs[0].depart, arrive: legs[legs.length - 1].arrive, rides: 1, free: true, legs });
   it('keeps one option per bus: the one that starts latest, walking to the nearest stop', () => {
-    const near = it([walk(H(5, 26), H(5, 27), 7), bus('t1', 3, H(5, 27), H(5, 44)), walk(H(5, 44), H(6, 0), 1200)]);
-    const far = it([walk(H(5, 17), H(5, 24), 500), bus('t1', 1, H(5, 24), H(5, 44)), walk(H(5, 44), H(6, 0), 1200)]);
-    const other = it([walk(H(5, 50), H(5, 51), 7), bus('t2', 3, H(5, 51), H(6, 10)), walk(H(6, 10), H(6, 26), 1200)]);
+    const near = itin([walk(H(5, 26), H(5, 27), 7), bus('t1', 3, H(5, 27), H(5, 44)), walk(H(5, 44), H(6, 0), 1200)]);
+    const far = itin([walk(H(5, 17), H(5, 24), 500), bus('t1', 1, H(5, 24), H(5, 44)), walk(H(5, 44), H(6, 0), 1200)]);
+    const other = itin([walk(H(5, 50), H(5, 51), 7), bus('t2', 3, H(5, 51), H(6, 10)), walk(H(6, 10), H(6, 26), 1200)]);
     expect(dedupe([far, near, other])).toEqual([near, other]);
   });
 });
