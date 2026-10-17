@@ -73,6 +73,16 @@ describe('buildData', () => {
     expect(d0.map((d) => d.headsign)).toEqual(['Delta', 'Gamma']);
     expect(l1.directions.map((d) => d.directionId)).toEqual([0, 0, 1]);
   });
+  it('keeps known wheelchair boarding only', () => {
+    const r = structuredClone(raw);
+    r.stops.get('UA')!.wheelchair = 1;
+    r.stops.get('UB')!.wheelchair = 2;
+    const st = buildData(r, '20261015', 'now').stops.stops;
+    const by = (id: string) => st.find((s) => s.id === id)!;
+    expect(by('UA').access).toBe(1);
+    expect(by('UB').access).toBe(2);
+    expect('access' in by('UC')).toBe(false);
+  });
   it('writes meta', () => {
     expect(data.meta).toEqual({ feedStart: '20261015', feedEnd: '20261028', generatedAt: '2026-10-15T04:30:00Z', tripCount: 4 });
   });

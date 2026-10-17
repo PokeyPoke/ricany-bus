@@ -80,6 +80,8 @@
 </div>
 
 {#if stop}
+  {@const barriers = group.filter((i) => data.stops[i].access === 2).map((i) => data.stops[i].platform).filter(Boolean)}
+  {#if barriers.length}<p class="small barrier">♿ {$t('stopNotAccessible', { p: barriers.join(', ') })}</p>{/if}
   <div class="chips">
     {#each lines as l (l)}
       <button class="line" aria-label={`${$t('lines')} ${l}`} onclick={() => openLine(l)}><LineBadge routeId={l} /></button>
@@ -113,6 +115,7 @@
 {/if}
 
 <style>
+  .barrier { color: var(--warn); margin: 4px 0; }
   .warn { color: var(--warn); }
   .line { min-width: 44px; display: grid; place-items: center; }
   .spacer { flex: 1; }

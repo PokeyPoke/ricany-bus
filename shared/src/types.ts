@@ -11,6 +11,8 @@ export interface StopRec {
   transfers: [number, number][];
   /** index into groups */
   group: number;
+  /** GTFS wheelchair_boarding when known: 1 accessible, 2 not accessible (absent = unknown) */
+  access?: 1 | 2;
 }
 export interface StopsFile { stops: StopRec[] }
 
