@@ -16,8 +16,8 @@
   const here = $derived<PlaceRef | undefined>(group ? { lat: group.lat, lon: group.lon, name: group.name } : undefined);
 
   /** [line, direction] sections to show: just the given line direction, or every line of the group */
-  const lastGroup = (l: LineRec, d: number) => {
-    const dd = l.directions.find((x) => x.directionId === d);
+  const lastGroup = (l: LineRec, i: number) => {
+    const dd = l.directions[i];
     return dd ? data.stops[dd.stops[dd.stops.length - 1]].group : -1;
   };
   const lines = $derived.by(() => {
@@ -29,16 +29,22 @@
   const dirOf = (l: LineRec) => {
     if (lineNo && l.number === lineNo && dir != null) return dir;
     if (chosen[l.number] != null) return chosen[l.number];
-    return (l.directions.find((d) => d.stops.some((s) => data.stops[s].group === gi) && lastGroup(l, d.directionId) !== gi) ?? l.directions[0]).directionId;
+    return Math.max(0, l.directions.findIndex((d, i) => d.stops.some((s) => data.stops[s].group === gi) && lastGroup(l, i) !== gi));
+  };
+  /** the opposite direction: its first variant serving this stop, else its first variant */
+  const flip = (l: LineRec, directionId: number) => {
+    const other = l.directions.map((d, i) => ({ d, i })).filter(({ d }) => d.directionId !== directionId);
+    return (other.find(({ d }) => d.stops.some((s) => data.stops[s].group === gi)) ?? other[0]).i;
   };
   let collapsed = $state<Record<string, boolean>>({});
   const isOpen = (l: LineRec, i: number) => (collapsed[l.number] != null ? !collapsed[l.number] : i === 0);
 
   const sections = $derived(lines.map((l, i) => {
     const d = dirOf(l);
-    const direction = l.directions.find((x) => x.directionId === d) ?? l.directions[0];
+    const di = l.directions[d] ? d : 0;
+    const direction = l.directions[di];
     const rows = group ? downstreamStops(data.timetable, data.stops, l.routeId, direction.directionId, direction.stops, group.platforms) : [];
-    return { l, direction, rows, open: isOpen(l, i) };
+    return { l, direction, di, rows, open: isOpen(l, i) };
   }));
 
   // map: depends on identity only
@@ -52,7 +58,7 @@
   const selDir = $derived(lineNo ? (dir ?? 0) : null);
   $effect(() => {
     if (!lineNo || selDir == null) return;
-    lineSelection.set({ number: lineNo, directionId: selDir });
+    lineSelection.set({ number: lineNo, dir: selDir });
     return () => lineSelection.set(null);
   });
 
@@ -75,7 +81,7 @@
           <LineBadge routeId={s.l.routeId} /> <span class="head">→ {s.direction.headsign}</span> <span aria-hidden="true">{s.open ? '▾' : '▸'}</span>
         </button>
         {#if !lineNo && s.l.directions.length > 1}
-          <button class="secondary flip" aria-label={`${$t('switchDirection')} ${s.l.number}`} onclick={() => (chosen[s.l.number] = s.l.directions.find((d) => d.directionId !== s.direction.directionId)!.directionId)}>⇄</button>
+          <button class="secondary flip" aria-label={`${$t('switchDirection')} ${s.l.number}`} onclick={() => (chosen[s.l.number] = flip(s.l, s.direction.directionId))}>⇄</button>
         {/if}
       </div>
       {#if s.open}
@@ -83,7 +89,7 @@
           <ul class="list">
             {#each s.rows as r (r.group)}
               <li>
-                <button class="row ds" onclick={() => navigate({ name: 'ride', line: s.l.number, dir: s.direction.directionId, from: group.id, to: data.groups[r.group].id })}>
+                <button class="row ds" onclick={() => navigate({ name: 'ride', line: s.l.number, dir: s.di, from: group.id, to: data.groups[r.group].id })}>
                   <span>{r.name}</span><span class="muted">+{r.minutes} min</span>
                 </button>
               </li>

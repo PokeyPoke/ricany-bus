@@ -9,7 +9,14 @@
   let { data, number, dir, stopId }: { data: AppData; number: string; dir: number; stopId: string | undefined } = $props();
 
   const line = $derived(data.lines.find((l) => l.number === number) ?? null);
-  const direction = $derived(line ? (line.directions.find((d) => d.directionId === dir) ?? line.directions[0]) : null);
+  const dirI = $derived(line && line.directions[dir] ? dir : 0);
+  const direction = $derived(line ? line.directions[dirI] : null);
+  /** "→ Kuří"; a variant sharing its headsign with another entry also names where it starts ("OÁZA → Strašín") */
+  const dirLabel = (i: number) => {
+    const d = line!.directions[i];
+    const shared = line!.directions.some((x, j) => j !== i && x.headsign === d.headsign);
+    return shared && line!.directions.findIndex((x) => x.headsign === d.headsign) !== i ? `${data.stops[d.stops[0]].name} → ${d.headsign}` : `→ ${d.headsign}`;
+  };
   let dayType = $state<DayType>(dayTypeOf($now.date));
   const date = $derived(sampleDate(data.timetable, dayType, $now.date));
   const selIdx = $derived.by(() => {
@@ -36,10 +43,10 @@
 
   // Line selection for the numbered stops on the map: keyed on line + direction identity only.
   const selNumber = $derived(line?.number ?? null);
-  const selDir = $derived(direction?.directionId ?? null);
+  const selDir = $derived(direction ? dirI : null);
   $effect(() => {
     if (selNumber == null || selDir == null) return;
-    lineSelection.set({ number: selNumber, directionId: selDir });
+    lineSelection.set({ number: selNumber, dir: selDir });
     return () => lineSelection.set(null);
   });
 
@@ -65,12 +72,12 @@
 
   const setDir = (d: number) => navigate({ name: 'line', number, dir: d }, true);
   const setStop = (i: number) => {
-    navigate({ name: 'line', number, dir: direction?.directionId ?? 0, stopId: data.stops[i].id }, true);
+    navigate({ name: 'line', number, dir: dirI, stopId: data.stops[i].id }, true);
     focusPoints.set([[data.stops[i].lon, data.stops[i].lat]]);
   };
   const whereTo = () => {
     if (!line || !direction || selIdx < 0) return;
-    navigate({ name: 'from', groupId: data.groups[data.stops[selIdx].group].id, line: line.number, dir: direction.directionId });
+    navigate({ name: 'from', groupId: data.groups[data.stops[selIdx].group].id, line: line.number, dir: dirI });
   };
   const DAYS: DayType[] = ['weekday', 'saturday', 'sunday'];
 </script>
@@ -83,8 +90,8 @@
 {#if line && direction}
   {#if line.directions.length > 1}
     <div class="seg" role="group">
-      {#each line.directions as d (d.directionId)}
-        <button aria-pressed={d.directionId === direction.directionId} onclick={() => setDir(d.directionId)}>→ {d.headsign}</button>
+      {#each line.directions as _, i (i)}
+        <button aria-pressed={i === dirI} onclick={() => setDir(i)}>{dirLabel(i)}</button>
       {/each}
     </div>
   {/if}

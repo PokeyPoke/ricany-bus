@@ -69,8 +69,8 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
   map.addLayer({ id: 'buses-pulse', type: 'circle', source: 'buses-pulse', filter: ['in', ['get', 'tripId'], ['literal', []]], paint: { 'circle-radius': 20, 'circle-color': ['get', 'color'], 'circle-opacity': 0.5, 'circle-pitch-alignment': 'map' } });
   map.addLayer({ id: 'buses-arrow', type: 'symbol', source: 'buses', filter: ['>=', ['get', 'bearing'], 0], layout: {
     'icon-image': ['concat', 'bus-arrow-', ['get', 'routeId']], 'icon-rotate': ['get', 'bearing'], 'icon-rotation-alignment': 'map', 'icon-offset': ['get', 'aoff'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-  } });
+  }, paint: { 'icon-opacity': ['case', ['==', ['get', 'waiting'], 1], 0.45, 1] } });
   map.addLayer({ id: 'buses', type: 'symbol', source: 'buses', layout: {
     'icon-image': ['concat', 'bus-', ['get', 'routeId']], 'icon-offset': ['get', 'off'], 'icon-allow-overlap': true, 'icon-ignore-placement': true,
-  } });
+  }, paint: { 'icon-opacity': ['case', ['==', ['get', 'waiting'], 1], 0.45, 1] } });
 }

@@ -23,7 +23,8 @@
   const rides = $derived.by(() => {
     if (!line || !gFrom || !gTo) return [];
     const n = $now;
-    return directRides((d) => netFor(data, d), n.date, n.sec - 60, line.routeId, dir, gFrom.platforms, gTo.platforms, 6);
+    const directionId = (line.directions[dir] ?? line.directions[0]).directionId;
+    return directRides((d) => netFor(data, d), n.date, n.sec - 60, line.routeId, directionId, gFrom.platforms, gTo.platforms, 6);
   });
 
   // map: identity of the ride request only
@@ -35,7 +36,7 @@
   });
   $effect(() => {
     if (!line) return;
-    lineSelection.set({ number: line.number, directionId: dir });
+    lineSelection.set({ number: line.number, dir: line.directions[dir] ? dir : 0 });
     return () => lineSelection.set(null);
   });
 

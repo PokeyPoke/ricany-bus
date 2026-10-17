@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { get, writable } from 'svelte/store';
-import { parseNextbike, createPoller, freshVehicles, resolveVehicleTrip } from '../src/lib/live';
+import { parseNextbike, createPoller, freshVehicles, resolveVehicleTrip, waitingStart } from '../src/lib/live';
 import { buildNetwork } from '../src/router/network';
 import { stops, timetable } from './fixtures/net';
 
@@ -72,6 +72,25 @@ it('resolveVehicleTrip finds a previous-day trip via the next day network', () =
   const hit = resolveVehicleTrip(v, netFor);
   expect(hit && hit.net.date).toBe('20261019');
   expect(hit && hit.net.patterns[hit.p].trips[hit.trip]).toMatchObject({ id: 'n1', serviceDate: '20261018' });
+});
+
+describe('waitingStart', () => {
+  const netFor = (d: string) => buildNetwork(stops, timetable, d);
+  const bus = (tripId: string, routeId: 'L1731' | 'L1736', startDate: string) =>
+    ({ id: 'x', label: '1', tripId, routeId, startDate, lat: 50, lon: 14.6, bearing: null, speed: null, stopSeq: null, ts: 1000 });
+  it('is the first departure while the trip has not started, then null', () => {
+    const v = bus('a1', 'L1731', '20261019'); // a1 leaves S0 at 08:00
+    expect(waitingStart(v, netFor, '20261019', 7 * 3600 + 50 * 60)).toMatchObject({ dep: 8 * 3600, stop: 0 });
+    expect(waitingStart(v, netFor, '20261019', 8 * 3600)).toBeNull();
+  });
+  it('handles a trip of the previous service day that starts after midnight', () => {
+    const v = bus('n1', 'L1736', '20261018'); // n1 leaves at 24:10 on the 18th's service day
+    expect(waitingStart(v, netFor, '20261019', 5 * 60)).not.toBeNull();
+    expect(waitingStart(v, netFor, '20261019', 11 * 60)).toBeNull();
+  });
+  it('is null for an unknown trip', () => {
+    expect(waitingStart(bus('nope', 'L1731', '20261019'), netFor, '20261019', 0)).toBeNull();
+  });
 });
 
 describe('createPoller visibility', () => {

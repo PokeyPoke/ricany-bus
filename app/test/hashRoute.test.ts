@@ -25,8 +25,10 @@ describe('hashRoute', () => {
     expect(parseHash('#/plan?mode=xyz&from=a,b,c')).toMatchObject({ name: 'plan', mode: 'now', from: undefined });
     expect(parseHash('#/line/3')).toEqual({ name: 'line', number: '3', dir: 0, stopId: undefined });
   });
-  it('coerces line dir to 0|1', () => {
-    expect(parseHash('#/line/3?dir=7')).toMatchObject({ dir: 0 });
+  it('coerces line dir to a small non-negative index', () => {
+    expect(parseHash('#/line/1?dir=3')).toMatchObject({ dir: 3 });
+    expect(parseHash('#/line/3?dir=99')).toMatchObject({ dir: 0 });
+    expect(parseHash('#/line/3?dir=1.5')).toMatchObject({ dir: 0 });
     expect(parseHash('#/line/3?dir=-1')).toMatchObject({ dir: 0 });
     expect(parseHash('#/line/3?dir=abc')).toMatchObject({ dir: 0 });
     expect(parseHash('#/line/3?dir=1')).toMatchObject({ dir: 1 });
@@ -39,7 +41,7 @@ describe('hashRoute', () => {
   });
   it('from/ride edge cases', () => {
     expect(parseHash('#/from/U1?line=&dir=1')).toEqual({ name: 'from', groupId: 'U1', line: undefined, dir: undefined });
-    expect(parseHash('#/from/U1?line=3&dir=7')).toEqual({ name: 'from', groupId: 'U1', line: '3', dir: 0 });
+    expect(parseHash('#/from/U1?line=3&dir=99')).toEqual({ name: 'from', groupId: 'U1', line: '3', dir: 0 });
     expect(parseHash('#/ride?line=3&dir=-1&from=a&to=b')).toMatchObject({ dir: 0 });
     expect(parseHash('#/ride?line=&dir=0&from=a&to=b')).toEqual({ name: 'home' });
   });

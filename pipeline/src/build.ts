@@ -104,7 +104,8 @@ export function buildData(raw: RawFree, today: string, generatedAt: string): Bui
     servicesByDate[d] = [...activeServices(raw.calendar, raw.calendarDates, d)].sort();
   }
 
-  // Lines: per direction, the pattern with the most stops
+  // Lines: per direction, the pattern with the most stops plus every other pattern that serves a stop it misses
+  // (line 1's Kuří and OÁZA branches); most frequent first within each direction.
   const lines: LineRec[] = [];
   for (const routeId of FREE_ROUTE_IDS) {
     const ps = withShape.filter((p) => p.routeId === routeId);
@@ -112,10 +113,18 @@ export function buildData(raw: RawFree, today: string, generatedAt: string): Bui
     const dirs = [...new Set(ps.map((p) => p.directionId))].sort();
     lines.push({
       routeId, ...LINE_STYLE[routeId as FreeRouteId], longName: raw.routes.get(routeId)?.longName ?? '',
-      directions: dirs.map((directionId) => {
-        const best = ps.filter((p) => p.directionId === directionId).sort((a, b) => b.stops.length - a.stops.length)[0];
-        const shape = raw.shapes.get(best.shapeId) ?? best.stops.map((i) => [stops[i].lon, stops[i].lat] as [number, number]);
-        return { directionId, headsign: best.headsign, stops: best.stops, shape: simplify(shape) };
+      directions: dirs.flatMap((directionId) => {
+        const cands = ps.filter((p) => p.directionId === directionId).sort((a, b) => b.stops.length - a.stops.length || b.trips.length - a.trips.length);
+        const covered = new Set<number>();
+        const chosen = cands.filter((p) => {
+          if (p !== cands[0] && p.stops.every((s) => covered.has(s))) return false;
+          p.stops.forEach((s) => covered.add(s));
+          return true;
+        });
+        return chosen.sort((a, b) => b.trips.length - a.trips.length).map((v) => {
+          const shape = raw.shapes.get(v.shapeId) ?? v.stops.map((i) => [stops[i].lon, stops[i].lat] as [number, number]);
+          return { directionId, headsign: v.headsign, stops: v.stops, shape: simplify(shape) };
+        });
       }),
     });
   }

@@ -7,7 +7,8 @@
   import { RIC_CENTER, LINE_STYLE, type Vehicle } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { MAP_STYLE } from '../config';
-  import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles } from '../lib/live';
+  import { bikes, bikesOk, useBikes, positions, usePositions, freshVehicles, waitingStart } from '../lib/live';
+  import { netFor } from '../lib/network';
   import { bikesLayerOn, poiLayerOn, buildingsLayerOn, pickTarget, mapPick, tripOverlay, highlightLine, focusPoints, userPos, planMarkers, hoverGroup, lineSelection, now } from '../lib/ui';
   import { navigate, route } from '../lib/nav';
   import { getLocation } from '../lib/geoloc';
@@ -70,7 +71,7 @@
     const ls = nearest(q('line-stops', near(22)));
     if (ls && map.getLayoutProperty('line-stops', 'visibility') === 'visible') {
       const d = p(ls);
-      navigate({ name: 'line', number: String(d.number), dir: Number(d.directionId), stopId: data.stops[Number(d.stopIdx)].id }, true);
+      navigate({ name: 'line', number: String(d.number), dir: Number(d.dir) || 0, stopId: data.stops[Number(d.stopIdx)].id }, true);
       return;
     }
     const g = nearest(q('groups-hit', near(22)));
@@ -78,7 +79,7 @@
     const place = nearest(q('places', near(18)).concat(q('places-detail', near(18))));
     if (place) { showPlace(place); return; }
     const l = q('lines', near(10))[0];
-    if (l) navigate({ name: 'line', number: String(p(l).number), dir: Number(p(l).directionId) || 0 });
+    if (l) navigate({ name: 'line', number: String(p(l).number), dir: Number(p(l).dir) || 0 });
   }
 
   /** screen-space icon centres of the live buses as last drawn: tripId -> [x, y] */
@@ -95,6 +96,8 @@
   }
 
   let lastVehicles: Vehicle[] = [];
+  /** buses on layover before their trip's first departure, drawn faded */
+  let waitingTrips = new Set<string>();
   /** project, fan out overlapping buses, push to the buses + leader sources */
   function refreshBuses(vehicles: Vehicle[] = lastVehicles) {
     lastVehicles = vehicles;
@@ -103,7 +106,7 @@
     const proj = vehicles.map((v) => ({ v, pt: m.project([v.lon, v.lat]) }));
     const offs = spreadOffsets(proj.map(({ v, pt }) => ({ id: v.tripId, x: pt.x, y: pt.y })), 46, 40);
     busCentres = proj.map(({ v, pt }) => { const o = offs[v.tripId] ?? [0, 0]; return { tripId: v.tripId, x: pt.x + o[0], y: pt.y + o[1] }; });
-    setData('buses', busesGeoJson(vehicles, offs, m.getBearing()));
+    setData('buses', busesGeoJson(vehicles, offs, m.getBearing(), waitingTrips));
     setData('buses-pulse', {
       type: 'FeatureCollection',
       features: proj.map(({ v, pt }) => {
@@ -209,7 +212,7 @@
     const sel = $lineSelection;
     if (!gen || !map) return;
     const line = sel && data.lines.find((l) => l.number === sel.number);
-    setData('line-stops', line && sel ? lineStopsGeoJson(data.groups, data.stops, line, sel.directionId) : { type: 'FeatureCollection', features: [] });
+    setData('line-stops', line && sel ? lineStopsGeoJson(data.groups, data.stops, line, sel.dir) : { type: 'FeatureCollection', features: [] });
     for (const id of ['line-stops', 'line-stops-num']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', line ? 'visible' : 'none');
     for (const id of ['groups', 'groups-hover']) if (map.getLayer(id)) map.setPaintProperty(id, 'icon-opacity', line ? 0.4 : 1);
     if (map.getLayer('groups-label')) map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
@@ -229,7 +232,10 @@
     if (!gen || !map) return;
     void $now; // re-filter stale vehicles on every clock tick
     const t0 = Date.now();
-    motion.update(freshVehicles($positions, t0), t0, !reducedMotion);
+    const fresh = freshVehicles($positions, t0);
+    const n = $now;
+    waitingTrips = new Set(fresh.filter((v) => waitingStart(v, (d) => netFor(data, d), n.date, n.sec)).map((v) => v.tripId));
+    motion.update(fresh, t0, !reducedMotion);
     refreshBuses(motion.at(t0));
     if (!frame && motion.moving(t0)) frame = requestAnimationFrame(tick);
   });

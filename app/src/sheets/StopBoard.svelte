@@ -18,6 +18,14 @@
   const group = $derived(stop ? data.stops.flatMap((s, i) => (s.name === stop.name ? [i] : [])) : []);
   const lines = $derived(LINE_ORDER.filter((l) => group.some((i) => data.stops[i].lines.includes(l))) as FreeRouteId[]);
 
+  /** open the line on the first direction or variant that serves this stop (any platform of it) */
+  function openLine(routeId: FreeRouteId) {
+    const line = data.lines.find((x) => x.routeId === routeId);
+    if (!line || !stop) return;
+    const dir = Math.max(0, line.directions.findIndex((d) => d.stops.some((i) => group.includes(i))));
+    const at = line.directions[dir]?.stops.find((i) => group.includes(i));
+    navigate({ name: 'line', number: line.number, dir, stopId: at !== undefined ? data.stops[at].id : stop.id });
+  }
   const stopLon = $derived(stop?.lon ?? null);
   const stopLat = $derived(stop?.lat ?? null);
 
@@ -74,7 +82,7 @@
 {#if stop}
   <div class="chips">
     {#each lines as l (l)}
-      <button class="line" aria-label={`${$t('lines')} ${l}`} onclick={() => navigate({ name: 'line', number: data.lines.find((x) => x.routeId === l)?.number ?? '', dir: 0, stopId: stop.id })}><LineBadge routeId={l} /></button>
+      <button class="line" aria-label={`${$t('lines')} ${l}`} onclick={() => openLine(l)}><LineBadge routeId={l} /></button>
     {/each}
     <span class="spacer"></span>
     <button class="secondary" onclick={() => navigate({ name: 'from', groupId: data.groups[stop.group].id })}>{$t('planFromHere')}</button>

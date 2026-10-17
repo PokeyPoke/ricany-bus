@@ -25,3 +25,7 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 - Smooth movement with real buses (none running during the test); real-device feel and battery use.
 - Street routing quality across the whole town beyond the spot checks above; the OSM data quality decides it.
 - Overpass from GitHub Actions (blocked from this container; the OSM API fallback was used to build the committed graph).
+
+## Follow-up: route variants and parked buses (2026-10-17)
+- **Route variants on the map.** Lines used to draw one route per direction (the variant with the most stops), so line 1's main Strašín ↔ Kuří route (25 trips/day) was missing behind the 8-trip OÁZA variant. Now each direction lists every variant that serves stops the others miss, most frequent first (only line 1 is affected: `→ Strašín | OÁZA → Strašín | → Kuří | → OÁZA`). `dir` in URLs and `lineSelection` is now an index into `LineRec.directions`.
+- **Parked buses.** A line 1 bus was reported 454 m off its route: it was parked at Wolkerova on layover, already signed on to its next trip (12:44 from OÁZA). Buses whose trip has not reached its first departure are drawn at 45 % opacity and the bus sheet says "Čeká na odjezd: 13:14 ze zastávky Strašín" (verified with a simulated vehicle at that spot).
