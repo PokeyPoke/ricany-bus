@@ -45,3 +45,16 @@ export function linesRunningOn(tt: TimetableFile, date: string): Set<FreeRouteId
   for (const p of tt.patterns) if (!out.has(p.routeId) && p.trips.some((t) => active.has(t.service))) out.add(p.routeId);
   return out;
 }
+
+/** The first free-line departure on the next day after `date` that has service (scans the timetable's dates). */
+export function nextServiceStart(tt: TimetableFile, date: string): { date: string; sec: number; routeId: FreeRouteId } | null {
+  for (const d of Object.keys(tt.servicesByDate).filter((x) => x > date).sort()) {
+    const active = new Set(tt.servicesByDate[d]);
+    let best: { date: string; sec: number; routeId: FreeRouteId } | null = null;
+    for (const p of tt.patterns) {
+      for (const t of p.trips) if (active.has(t.service) && (!best || t.dep[0] < best.sec)) best = { date: d, sec: t.dep[0], routeId: p.routeId };
+    }
+    if (best) return best;
+  }
+  return null;
+}

@@ -11,6 +11,8 @@ export interface StopRec {
   transfers: [number, number][];
   /** index into groups */
   group: number;
+  /** GTFS wheelchair_boarding when known: 1 accessible, 2 not accessible (absent = unknown) */
+  access?: 1 | 2;
 }
 export interface StopsFile { stops: StopRec[] }
 
@@ -92,3 +94,18 @@ export interface Vehicle {
   ts: number;
 }
 export interface PositionsResponse { generatedAt: number; vehicles: Vehicle[] }
+
+/** A PID service alert that affects at least one free line (Worker /alerts). */
+export interface ServiceAlert {
+  id: string;
+  routes: FreeRouteId[];
+  header: string;
+  description: string;
+  /** link to the full notice on pid.cz, may be empty */
+  url: string;
+  headerEn: string | null;
+  descriptionEn: string | null;
+  /** active periods as [start, end] unix seconds; null = open-ended; empty = always */
+  periods: [number | null, number | null][];
+}
+export interface AlertsResponse { generatedAt: number; alerts: ServiceAlert[] }

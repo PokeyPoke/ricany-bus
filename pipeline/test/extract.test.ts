@@ -21,7 +21,7 @@ describe('extractFree', () => {
   it('keeps only stops served by free trips', async () => {
     const raw = await extractFree(dirSource(FIX));
     expect([...raw.stops.keys()].sort()).toEqual(['UA', 'UB', 'UC', 'UD', 'UE']);
-    expect(raw.stops.get('UA')).toEqual({ name: 'Říčany,Alfa', platform: 'A', lat: 49.99, lon: 14.65 });
+    expect(raw.stops.get('UA')).toEqual({ name: 'Říčany,Alfa', platform: 'A', lat: 49.99, lon: 14.65, wheelchair: 0 });
   });
   it('orders stop times and parses arr/dep', async () => {
     const raw = await extractFree(dirSource(FIX));

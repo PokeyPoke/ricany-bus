@@ -1,5 +1,5 @@
-import { FREE_ROUTE_IDS, type DelaysResponse, type FreeRouteId, type PositionsResponse, type Vehicle } from '@rb/shared';
-import type { RawVehicle, TripUpdate } from './pb';
+import { FREE_ROUTE_IDS, type AlertsResponse, type DelaysResponse, type FreeRouteId, type PositionsResponse, type Vehicle } from '@rb/shared';
+import type { RawAlert, RawVehicle, TripUpdate } from './pb';
 
 const FREE = new Set<string>(FREE_ROUTE_IDS);
 
@@ -33,4 +33,21 @@ export function filterPositions(feed: { timestamp: number; vehicles: RawVehicle[
     });
   }
   return { generatedAt: feed.timestamp, vehicles };
+}
+
+const pick = (t: Record<string, string>) => t.cs ?? t[''] ?? Object.values(t)[0] ?? '';
+
+/** Alerts that name at least one free line; Czech text preferred, English kept when present. */
+export function filterAlerts(feed: { timestamp: number; alerts: RawAlert[] }): AlertsResponse {
+  const alerts: AlertsResponse['alerts'] = [];
+  for (const a of feed.alerts) {
+    const routes = [...new Set(a.routeIds.filter((r) => FREE.has(r)))] as FreeRouteId[];
+    if (!routes.length) continue;
+    alerts.push({
+      id: a.id, routes, header: pick(a.header), description: pick(a.description), url: pick(a.url),
+      headerEn: a.header.en ?? null, descriptionEn: a.description.en ?? null,
+      periods: a.periods.map((p) => [p.start, p.end] as [number | null, number | null]),
+    });
+  }
+  return { generatedAt: feed.timestamp, alerts };
 }

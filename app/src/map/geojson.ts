@@ -1,4 +1,5 @@
 import { LINE_STYLE, type Vehicle, type LineRec, type StopRec, type StopGroup } from '@rb/shared';
+import { alongShape } from './motion';
 import { ringKey } from './rings';
 import type { AppData } from '../lib/data';
 import type { BikeStation, Itinerary } from '../router/types';
@@ -67,7 +68,16 @@ export function tripGeoJson(it: Itinerary, data: AppData): FC {
   return fc(it.legs.map((l) => {
     if (l.kind === 'bus') {
       const p = data.timetable.patterns[l.pattern];
-      const coords = p.stops.slice(l.boardPos, l.alightPos + 1).map((i) => [data.stops[i].lon, data.stops[i].lat] as [number, number]);
+      const pts = p.stops.slice(l.boardPos, l.alightPos + 1).map((i) => [data.stops[i].lon, data.stops[i].lat] as [number, number]);
+      const shapes = data.lines.find((x) => x.routeId === l.routeId)?.directions.map((d) => d.shape) ?? [];
+      // stop to stop along the line's shape (straight where no shape fits), so loops and bends are drawn as driven
+      const coords: [number, number][] = [pts[0]];
+      for (let k = 1; k < pts.length; k++) {
+        for (const c of (alongShape(shapes, pts[k - 1], pts[k]) ?? [pts[k - 1], pts[k]]).slice(1)) {
+          const last = coords[coords.length - 1];
+          if (c[0] !== last[0] || c[1] !== last[1]) coords.push(c);
+        }
+      }
       return lineStr(coords, { kind: 'bus', color: LINE_STYLE[l.routeId].color });
     }
     return lineStr(l.path ?? [[l.from.lon, l.from.lat], [l.to.lon, l.to.lat]], { kind: l.kind, color: l.kind === 'bike' ? '#2e9d4a' : '#555555' });

@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { addDays, formatHM, haversine, LINE_ORDER, type FreeRouteId } from '@rb/shared';
+  import { addDays, formatHM, LINE_ORDER, type FreeRouteId } from '@rb/shared';
+  import { streetGraph, useStreets, nearestOnFoot } from '../lib/streets';
   import type { AppData } from '../lib/data';
   import { netFor } from '../lib/network';
   import { departuresAt, boardWindow } from '../router/departures';
@@ -54,9 +55,11 @@
   });
 
   const staleMin = $derived(bikesStaleMin($bikesAt, Date.now() + 0 * $now.sec));
+  useStreets();
   const nearestBike = $derived.by(() => {
     if (!stop || !$bikes?.length) return null;
-    return $bikes.map((b) => ({ b, m: Math.round(haversine(stop.lat, stop.lon, b.lat, b.lon)) })).sort((x, y) => x.m - y.m)[0];
+    const best = nearestOnFoot($streetGraph, stop, $bikes, 1, Infinity)[0];
+    return best ? { b: best.item, m: best.m } : null;
   });
 
   function dayLabel(day: number): string {
@@ -80,6 +83,8 @@
 </div>
 
 {#if stop}
+  {@const barriers = group.filter((i) => data.stops[i].access === 2).map((i) => data.stops[i].platform).filter(Boolean)}
+  {#if barriers.length}<p class="small barrier">♿ {$t('stopNotAccessible', { p: barriers.join(', ') })}</p>{/if}
   <div class="chips">
     {#each lines as l (l)}
       <button class="line" aria-label={`${$t('lines')} ${l}`} onclick={() => openLine(l)}><LineBadge routeId={l} /></button>
@@ -113,6 +118,7 @@
 {/if}
 
 <style>
+  .barrier { color: var(--warn); margin: 4px 0; }
   .warn { color: var(--warn); }
   .line { min-width: 44px; display: grid; place-items: center; }
   .spacer { flex: 1; }

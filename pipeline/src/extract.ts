@@ -9,7 +9,7 @@ export interface RawTrip {
 export interface RawFree {
   routes: Map<FreeRouteId, { longName: string }>;
   trips: RawTrip[];
-  stops: Map<string, { name: string; platform: string; lat: number; lon: number }>;
+  stops: Map<string, { name: string; platform: string; lat: number; lon: number; wheelchair: number }>;
   calendar: Row[];
   calendarDates: Row[];
   shapes: Map<string, [number, number][]>;
@@ -52,10 +52,10 @@ export async function extractFree(src: GtfsSource): Promise<RawFree> {
   }
   for (const t of trips.values()) t.stopTimes.sort((a, b) => a.seq - b.seq);
 
-  const stops = new Map<string, { name: string; platform: string; lat: number; lon: number }>();
+  const stops = new Map<string, { name: string; platform: string; lat: number; lon: number; wheelchair: number }>();
   for await (const r of src.rows('stops.txt')) {
     if (stopIds.has(r.stop_id)) {
-      stops.set(r.stop_id, { name: r.stop_name, platform: r.platform_code ?? '', lat: Number(r.stop_lat), lon: Number(r.stop_lon) });
+      stops.set(r.stop_id, { name: r.stop_name, platform: r.platform_code ?? '', lat: Number(r.stop_lat), lon: Number(r.stop_lon), wheelchair: Number(r.wheelchair_boarding) || 0 });
     }
   }
 

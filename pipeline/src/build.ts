@@ -56,7 +56,9 @@ export function buildData(raw: RawFree, today: string, generatedAt: string): Bui
   const idx = new Map(stopIds.map((id, i) => [id, i]));
   const stops: StopRec[] = stopIds.map((id) => {
     const s = raw.stops.get(id)!;
-    return { id, name: stripCity(s.name), platform: s.platform, lat: s.lat, lon: s.lon, lines: [], transfers: [], group: -1 };
+    const rec: StopRec = { id, name: stripCity(s.name), platform: s.platform, lat: s.lat, lon: s.lon, lines: [], transfers: [], group: -1 };
+    if (s.wheelchair === 1 || s.wheelchair === 2) rec.access = s.wheelchair;
+    return rec;
   });
   for (const t of raw.trips) {
     for (const st of t.stopTimes) {

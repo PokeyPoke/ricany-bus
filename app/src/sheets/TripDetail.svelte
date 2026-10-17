@@ -10,6 +10,8 @@
   import { shareLink } from '../lib/share';
   import { t } from '../lib/i18n';
   import LineBadge from '../components/LineBadge.svelte';
+  import AlertList from '../components/AlertList.svelte';
+  import LeaveCountdown from '../components/LeaveCountdown.svelte';
   import DelayBadge from '../components/DelayBadge.svelte';
 
   let { it, data, onBack }: { it: Itinerary; data: AppData; onBack: () => void } = $props();
@@ -71,6 +73,8 @@
 {/if}
 <div class="toast" class:on={!!toast} role="status">{toast}</div>
 
+<LeaveCountdown {it} boardDelay={ov.boardDelay} />
+<AlertList routes={it.legs.flatMap((l) => (l.kind === 'bus' ? [l.routeId] : []))} />
 <ol class="legs">
   {#each it.legs as l, i (i)}
     <li class="leg {l.kind}">
@@ -87,12 +91,14 @@
           {#if ov.transferRisk[i]}<p class="risk" role="status">⚠️ {$t('transferRisk')}</p>{/if}
           <div class="line"><LineBadge routeId={l.routeId} /> <span>{$t('toward', { h: l.headsign })}</span></div>
           <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.from].id })}>{stopLabel(l.from)}</button>
+          {#if data.stops[l.from].access === 2}<div class="small barrier">♿ {$t('platformNotAccessible')}</div>{/if}
           <div class="small muted">{$t('stopsCount', { n: l.stopCount })}</div>
           {#if liveLine(l)}<div class="small live">🚌 {liveLine(l)}</div>{/if}
           <div class="arr">
             {formatHM(l.arrive)}{#if $delaysOk}<DelayBadge sec={ov.alightDelay[i]} live={$delaysOk} />{/if}
             <button class="stoplink" onclick={() => navigate({ name: 'stop', stopId: data.stops[l.to].id })}>{stopLabel(l.to)}</button>
           </div>
+          {#if data.stops[l.to].access === 2}<div class="small barrier">♿ {$t('platformNotAccessible')}</div>{/if}
         {/if}
       </div>
     </li>
@@ -101,6 +107,7 @@
 </ol>
 
 <style>
+  .barrier { color: var(--warn); }
   .share { margin-left: auto; min-height: 44px; }
   .manual { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
   .manual input { width: 100%; }

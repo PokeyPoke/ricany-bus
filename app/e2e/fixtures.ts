@@ -37,6 +37,9 @@ export const NEXTBIKE = { countries: [{ cities: [{ uid: 736, places: [
 const PHOTON = { features: [{ geometry: { coordinates: [14.6556, 49.9918] }, properties: { name: 'Testovací náměstí', city: 'Říčany' } }] };
 const STYLE = { version: 8, glyphs: 'https://glyphs.invalid/{fontstack}/{range}.pbf', sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#eef2f5' } }] };
 
+/** an always-active alert on line 3 */
+export const ALERT = { id: 'e2e-alert', routes: ['L1733'], header: 'Testovací výluka', description: 'Linka 3 jede odklonem.', url: 'https://pid.cz/test', headerEn: null, descriptionEn: null, periods: [] };
+
 export const test = base.extend<{ mocks: void; delaysStatus: number }>({
   delaysStatus: [200, { option: true }],
   mocks: [async ({ page, delaysStatus }, use) => {
@@ -48,6 +51,7 @@ export const test = base.extend<{ mocks: void; delaysStatus: number }>({
     await page.route('https://ricany-bus-live.pokeypoke.workers.dev/**', (r) => {
       if (delaysStatus !== 200) return r.fulfill({ status: delaysStatus, json: { error: 'down' } });
       if (new URL(r.request().url()).pathname.endsWith('/positions')) return r.fulfill({ json: { generatedAt: BUS.ts, vehicles: [BUS] } });
+      if (new URL(r.request().url()).pathname.endsWith('/alerts')) return r.fulfill({ json: { generatedAt: 1, alerts: [ALERT] } });
       return r.fulfill({ json: { generatedAt: 1, trips: {} } });
     });
     await page.clock.setFixedTime(CLOCK);

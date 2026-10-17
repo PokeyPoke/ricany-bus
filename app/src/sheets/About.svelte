@@ -21,6 +21,7 @@
 
 <div class="about">
   <p>{$t('aboutIntro')}</p>
+  <p>♿ {$t('aboutAccess')}</p>
   <p>{$t('aboutFree')} <a href="https://www.ricany.cz" target="_blank" rel="noopener">ricany.cz</a>.</p>
   <p>{$t('aboutData')}</p>
   <p>{$t('aboutUnofficial')}</p>

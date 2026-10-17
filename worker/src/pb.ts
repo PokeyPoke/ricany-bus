@@ -143,3 +143,57 @@ export function decodeVehiclePositions(buf: Uint8Array): { timestamp: number; ve
   }
   return { timestamp, vehicles };
 }
+
+// Alerts: FeedEntity{id=1, alert=5}, Alert{active_period=1, informed_entity=5, url=8, header_text=10, description_text=11},
+// TimeRange{start=1, end=2}, EntitySelector{route_id=2}, TranslatedString{translation=1}, Translation{text=1, language=2}.
+export interface RawAlert {
+  id: string; routeIds: string[]; periods: { start: number | null; end: number | null }[];
+  header: Record<string, string>; description: Record<string, string>; url: Record<string, string>;
+}
+function readTranslated(r: Reader): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [f, wt] of r.fields()) {
+    if (f !== 1 || wt !== 2) { r.skip(wt); continue; }
+    const t = r.sub();
+    let text = '', lang = '';
+    for (const [tf, twt] of t.fields()) { if (tf === 1 && twt === 2) text = t.string(); else if (tf === 2 && twt === 2) lang = t.string(); else t.skip(twt); }
+    out[lang] = text;
+  }
+  return out;
+}
+function readAlert(r: Reader, a: RawAlert) {
+  for (const [f, wt] of r.fields()) {
+    if (f === 1 && wt === 2) {
+      const p = r.sub(); const period = { start: null as number | null, end: null as number | null };
+      for (const [pf, pwt] of p.fields()) { if (pf === 1 && pwt === 0) period.start = p.uint(); else if (pf === 2 && pwt === 0) period.end = p.uint(); else p.skip(pwt); }
+      a.periods.push(period);
+    } else if (f === 5 && wt === 2) {
+      const e = r.sub();
+      for (const [ef, ewt] of e.fields()) { if (ef === 2 && ewt === 2) a.routeIds.push(e.string()); else e.skip(ewt); }
+    } else if (f === 8 && wt === 2) a.url = readTranslated(r.sub());
+    else if (f === 10 && wt === 2) a.header = readTranslated(r.sub());
+    else if (f === 11 && wt === 2) a.description = readTranslated(r.sub());
+    else r.skip(wt);
+  }
+}
+
+export function decodeAlerts(buf: Uint8Array): { timestamp: number; alerts: RawAlert[] } {
+  const r = new Reader(buf);
+  let timestamp = 0;
+  const alerts: RawAlert[] = [];
+  for (const [f, wt] of r.fields()) {
+    if (f === 1 && wt === 2) {
+      const h = r.sub();
+      for (const [hf, hwt] of h.fields()) { if (hf === 3 && hwt === 0) timestamp = h.uint(); else h.skip(hwt); }
+    } else if (f === 2 && wt === 2) {
+      const e = r.sub();
+      let id = '';
+      for (const [ef, ewt] of e.fields()) {
+        if (ef === 1 && ewt === 2) id = e.string();
+        else if (ef === 5 && ewt === 2) { const a: RawAlert = { id, routeIds: [], periods: [], header: {}, description: {}, url: {} }; readAlert(e.sub(), a); alerts.push(a); }
+        else e.skip(ewt);
+      }
+    } else r.skip(wt);
+  }
+  return { timestamp, alerts };
+}

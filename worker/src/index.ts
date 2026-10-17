@@ -1,10 +1,11 @@
-import { decodeTripUpdates, decodeVehiclePositions } from './pb';
-import { filterDelays, filterPositions } from './filter';
+import { decodeAlerts, decodeTripUpdates, decodeVehiclePositions } from './pb';
+import { filterAlerts, filterDelays, filterPositions } from './filter';
 import { prefilter } from './prefilter';
 
 const ROUTES: Record<string, { url: string; build: (buf: Uint8Array) => unknown }> = {
   '/delays': { url: 'https://api.golemio.cz/v2/vehiclepositions/gtfsrt/trip_updates.pb', build: (b) => filterDelays(decodeTripUpdates(prefilter(b))) },
   '/positions': { url: 'https://api.golemio.cz/v2/vehiclepositions/gtfsrt/vehicle_positions.pb', build: (b) => filterPositions(decodeVehiclePositions(prefilter(b))) },
+  '/alerts': { url: 'https://api.golemio.cz/v2/vehiclepositions/gtfsrt/alerts.pb', build: (b) => filterAlerts(decodeAlerts(prefilter(b))) },
 };
 const TTL_MS = 15_000, STALE_MS = 120_000;
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS' };
