@@ -34,6 +34,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/\/v2\//],
         // take over open pages as soon as a worker activates, so "load" (skip waiting) reloads into the new version
         clientsClaim: true,
+        importScripts: ['sw-handover.js'],
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}', 'data/*.json'],
         runtimeCaching: [
           { urlPattern: ({ url }) => url.pathname.includes('/data/') && url.pathname.endsWith('.json'), handler: 'StaleWhileRevalidate', options: { cacheName: 'rb-data' } },
