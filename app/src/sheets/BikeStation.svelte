@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { haversine } from '@rb/shared';
+  import { streetGraph, useStreets, nearestOnFoot } from '../lib/streets';
   import type { AppData } from '../lib/data';
   import { bikes, bikesOk, bikesAt, bikesStaleMin, useBikes } from '../lib/live';
   import { now, focusPoints, tripOverlay, highlightLine } from '../lib/ui';
@@ -17,8 +17,10 @@
     // $bikes refreshes every 60 s with new objects; depend only on coordinates
     if (stLon != null && stLat != null) focusPoints.set([[stLon, stLat]]);
   });
+  useStreets();
+  // nearest platform per stop name, by walking distance
   const nearStops = $derived(st
-    ? data.stops.map((s) => ({ s, m: Math.round(haversine(st.lat, st.lon, s.lat, s.lon)) })).sort((a, b) => a.m - b.m)
+    ? nearestOnFoot($streetGraph, st, data.stops, 12).map(({ item, m }) => ({ s: item, m }))
         .filter((x, i, arr) => arr.findIndex((y) => y.s.name === x.s.name) === i).slice(0, 3)
     : []);
   const staleMin = $derived(bikesStaleMin($bikesAt, Date.now() + 0 * $now.sec));
