@@ -9,5 +9,6 @@ export function haversine(lat1: number, lon1: number, lat2: number, lon2: number
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(a));
 }
-export const walkSec = (m: number) => Math.round((m * DETOUR) / WALK_SPEED_MPS);
-export const bikeSec = (m: number) => Math.round((m * DETOUR) / BIKE_SPEED_MPS);
+/** Seconds for `m` meters; `straight` meters get the DETOUR factor, street-network meters do not. */
+export const walkSec = (m: number, straight = true) => Math.round((m * (straight ? DETOUR : 1)) / WALK_SPEED_MPS);
+export const bikeSec = (m: number, straight = true) => Math.round((m * (straight ? DETOUR : 1)) / BIKE_SPEED_MPS);

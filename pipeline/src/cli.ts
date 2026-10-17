@@ -1,14 +1,15 @@
-import { createWriteStream, mkdirSync, writeFileSync, statSync, mkdtempSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync, statSync, mkdtempSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
-import { pragueNow } from '@rb/shared';
+import { StreetGraph, pragueNow, type StreetsFile } from '@rb/shared';
 import { zipSource } from './source';
 import { extractFree } from './extract';
 import { buildData } from './build';
 import { validate } from './validate';
+import { streetTransfers } from './streets';
 
 const FEED_URL = 'https://data.pid.cz/PID_GTFS.zip';
 const OUT = resolve(dirname(fileURLToPath(import.meta.url)), '../../app/public/data');
@@ -30,6 +31,9 @@ async function main() {
     console.error('Validation failed — keeping previous data:\n' + errors.map((e) => ` - ${e}`).join('\n'));
     process.exit(1);
   }
+  const streets = join(OUT, 'streets.json');
+  if (existsSync(streets)) streetTransfers(data.stops.stops, new StreetGraph(JSON.parse(readFileSync(streets, 'utf8')) as StreetsFile));
+  else console.warn('streets.json missing — stop transfers use straight-line estimates (run npm run streets)');
   mkdirSync(OUT, { recursive: true });
   for (const [name, value] of Object.entries({ stops: data.stops, groups: data.groups, lines: data.lines, timetable: data.timetable, meta: data.meta })) {
     const p = join(OUT, `${name}.json`);
