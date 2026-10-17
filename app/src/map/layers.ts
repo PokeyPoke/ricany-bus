@@ -1,6 +1,6 @@
 import type * as maplibregl from 'maplibre-gl';
 import type { AppData } from '../lib/data';
-import { linesGeoJson, groupsGeoJson, type FC } from './geojson';
+import { linesGeoJson, parallelLinesGeoJson, groupsGeoJson, type FC } from './geojson';
 import { drawRing, ringKey } from './rings';
 import { drawBusIcon, drawArrow } from './busIcons';
 import { LINE_ORDER, LINE_STYLE } from '@rb/shared';
@@ -10,7 +10,9 @@ const FONT = ['Noto Sans Regular'];
 const FONT_BOLD = ['Noto Sans Bold'];
 
 export function addLayers(map: maplibregl.Map, data: AppData): void {
-  map.addSource('lines', { type: 'geojson', data: linesGeoJson(data.lines) as never });
+  // side by side where lines share a road; the highlight uses the true (un-offset) routes on top
+  map.addSource('lines', { type: 'geojson', data: parallelLinesGeoJson(data.lines) as never });
+  map.addSource('lines-full', { type: 'geojson', data: linesGeoJson(data.lines) as never });
   map.addSource('groups', { type: 'geojson', data: groupsGeoJson(data.groups) as never, promoteId: 'gi', generateId: false } as never);
   map.addSource('line-stops', { type: 'geojson', data: empty as never, promoteId: 'gi', generateId: false } as never);
   for (const g of data.groups) {
@@ -21,9 +23,14 @@ export function addLayers(map: maplibregl.Map, data: AppData): void {
   map.addSource('trip', { type: 'geojson', data: empty as never });
 
   const round = { 'line-join': 'round', 'line-cap': 'round' } as const;
-  map.addLayer({ id: 'lines-casing', type: 'line', source: 'lines', layout: round, paint: { 'line-color': '#ffffff', 'line-width': 7, 'line-opacity': 0.9 } });
-  map.addLayer({ id: 'lines', type: 'line', source: 'lines', layout: round, paint: { 'line-color': ['get', 'color'], 'line-width': 4, 'line-opacity': 0.85 } });
-  map.addLayer({ id: 'lines-hl', type: 'line', source: 'lines', layout: round, filter: ['==', ['get', 'routeId'], ''], paint: { 'line-color': ['get', 'color'], 'line-width': 8 } });
+  // one line width per slot, so lines sharing a road just touch at every zoom
+  const width = ['interpolate', ['linear'], ['zoom'], 12, 2.5, 14, 4, 17, 6];
+  const offset = ['interpolate', ['linear'], ['zoom'], 12, ['*', ['get', 'off'], 2.5], 14, ['*', ['get', 'off'], 4], 17, ['*', ['get', 'off'], 6]];
+  const casing = ['interpolate', ['linear'], ['zoom'], 12, 4.5, 14, 6.5, 17, 9];
+  map.addLayer({ id: 'lines-casing', type: 'line', source: 'lines', layout: round, paint: { 'line-color': '#ffffff', 'line-width': casing, 'line-offset': offset, 'line-opacity': 0.9 } as never });
+  map.addLayer({ id: 'lines', type: 'line', source: 'lines', layout: round, paint: { 'line-color': ['get', 'color'], 'line-width': width, 'line-offset': offset, 'line-opacity': 0.9 } as never });
+  map.addLayer({ id: 'lines-hl-casing', type: 'line', source: 'lines-full', layout: round, filter: ['==', ['get', 'routeId'], ''], paint: { 'line-color': '#ffffff', 'line-width': 11 } });
+  map.addLayer({ id: 'lines-hl', type: 'line', source: 'lines-full', layout: round, filter: ['==', ['get', 'routeId'], ''], paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
 
   map.addLayer({ id: 'trip-walk', type: 'line', source: 'trip', layout: round, filter: ['==', ['get', 'kind'], 'walk'], paint: { 'line-color': ['get', 'color'], 'line-width': 3, 'line-dasharray': [1, 1.5] } });
   map.addLayer({ id: 'trip-bike', type: 'line', source: 'trip', layout: round, filter: ['==', ['get', 'kind'], 'bike'], paint: { 'line-color': ['get', 'color'], 'line-width': 5, 'line-dasharray': [2, 1] } });

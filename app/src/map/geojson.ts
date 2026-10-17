@@ -1,5 +1,6 @@
 import { LINE_STYLE, type Vehicle, type LineRec, type StopRec, type StopGroup } from '@rb/shared';
 import { alongShape } from './motion';
+import { parallelRuns } from './parallel';
 import { ringKey } from './rings';
 import type { AppData } from '../lib/data';
 import type { BikeStation, Itinerary } from '../router/types';
@@ -17,6 +18,15 @@ const lineStr = (coordinates: [number, number][], properties: Feature['propertie
 
 export const linesGeoJson = (lines: LineRec[]) =>
   fc(lines.flatMap((l) => l.directions.map((d, dir) => lineStr(d.shape, { routeId: l.routeId, number: l.number, color: l.color, dir }))));
+
+/** Lines drawn side by side where they share a road: `off` is the offset in line widths (see parallel.ts). */
+export function parallelLinesGeoJson(lines: LineRec[]): FC {
+  const byId = new Map(lines.map((l) => [l.routeId, l]));
+  return fc(parallelRuns(lines).map((r) => {
+    const l = byId.get(r.routeId)!;
+    return lineStr(r.coords, { routeId: l.routeId, number: l.number, color: l.color, dir: r.dir, off: r.off });
+  }));
+}
 
 export const groupsGeoJson = (groups: StopGroup[]) =>
   fc(groups.map((g, gi) => point(g.lon, g.lat, { gi, id: g.id, name: g.name, ring: ringKey(g.lines) })));
