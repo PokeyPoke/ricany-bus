@@ -17,6 +17,7 @@
   import LayersPanel from '../components/LayersPanel.svelte';
   import { bikesGeoJson, busesGeoJson, tripGeoJson, lineStopsGeoJson, bbox, type FC } from './geojson';
   import { spreadOffsets } from './spread';
+  import { BusMotion } from './motion';
 
   // maplibre 6 locates its worker via import.meta.url, which breaks under Vite's dep pre-bundling; point it at the emitted asset.
   maplibregl.setWorkerUrl(workerUrl);
@@ -214,11 +215,25 @@
     if (map.getLayer('groups-label')) map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
   });
   $effect(() => usePositions());
+  // buses glide between reports along their line's shape (motion.ts); a ~20 fps tick runs only while one is moving
+  const motion = new BusMotion((routeId) => data.lines.find((l) => l.routeId === routeId)?.directions.map((d) => d.shape) ?? []);
+  const reducedMotion = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let frame = 0, lastFrame = 0;
+  function tick(ts: number) {
+    frame = 0;
+    if (typeof document !== 'undefined' && document.hidden) return; // the next positions update restarts it
+    if (ts - lastFrame >= 50) { lastFrame = ts; refreshBuses(motion.at(Date.now())); }
+    if (motion.moving(Date.now())) frame = requestAnimationFrame(tick);
+  }
   $effect(() => {
     if (!gen || !map) return;
     void $now; // re-filter stale vehicles on every clock tick
-    refreshBuses(freshVehicles($positions, Date.now()));
+    const t0 = Date.now();
+    motion.update(freshVehicles($positions, t0), t0, !reducedMotion);
+    refreshBuses(motion.at(t0));
+    if (!frame && motion.moving(t0)) frame = requestAnimationFrame(tick);
   });
+  $effect(() => () => { if (frame) cancelAnimationFrame(frame); frame = 0; });
   $effect(() => { if ($bikesLayerOn) return useBikes(); });
   $effect(() => {
     if (!gen || !map) return;
