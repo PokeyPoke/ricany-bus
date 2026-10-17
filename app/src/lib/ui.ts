@@ -21,6 +21,8 @@ export const highlightLine = writable<FreeRouteId | null>(null);
 export const focusPoints = writable<[number, number][] | null>(null);
 export const userPos = writable<{ lat: number; lon: number } | null>(null);
 export const planMarkers = writable<{ from?: PlaceRef; to?: PlaceRef }>({});
+/** set by the new (sentence) version: what a tap on a stop in the map means there */
+export const stopTap = writable<((groupId: string) => void) | null>(null);
 export const hoverGroup = writable<number | null>(null);
 /** `dir`: index into the line's directions (route variants included) */
 export const lineSelection = writable<{ number: string; dir: number } | null>(null);

@@ -9,7 +9,7 @@
   import LineBadge from '../components/LineBadge.svelte';
   import AlertList from '../components/AlertList.svelte';
 
-  let { data, number, dir, stopId }: { data: AppData; number: string; dir: number; stopId: string | undefined } = $props();
+  let { data, number, dir, stopId, date: atDate }: { data: AppData; number: string; dir: number; stopId: string | undefined; date?: string } = $props();
 
   const line = $derived(data.lines.find((l) => l.number === number) ?? null);
   const dirI = $derived(line && line.directions[dir] ? dir : 0);
@@ -21,6 +21,8 @@
     return shared && line!.directions.findIndex((x) => x.headsign === d.headsign) !== i ? `${data.stops[d.stops[0]].name} → ${d.headsign}` : `→ ${d.headsign}`;
   };
   let dayType = $state<DayType>(dayTypeOf($now.date));
+  // a chosen day (the new version's "when") picks the timetable's day type
+  $effect(() => { if (atDate) dayType = dayTypeOf(atDate); });
   const date = $derived(sampleDate(data.timetable, dayType, $now.date));
   const selIdx = $derived.by(() => {
     if (!direction) return -1;
@@ -89,7 +91,7 @@
   const DAYS: DayType[] = ['weekday', 'saturday', 'sunday'];
 </script>
 
-<div class="sheet-header">
+<div class="sheet-header nav-header">
   <button class="back" aria-label={$t('back')} onclick={() => (history.length > 1 ? history.back() : navigate({ name: 'home' }))}><Icon name="back" /></button>
   {#if line}<LineBadge routeId={line.routeId} /><h1 class="ln">{line.longName}</h1>{:else}<h1>{$t('lineNotFound')}</h1>{/if}
 </div>

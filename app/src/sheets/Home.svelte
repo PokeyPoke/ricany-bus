@@ -14,7 +14,7 @@
   import NearbyDepartures from '../components/NearbyDepartures.svelte';
   import AlertList from '../components/AlertList.svelte';
 
-  let { data }: { data: AppData } = $props();
+  let { data, date, time }: { data: AppData; date?: string; time?: string } = $props();
   let adding = $state(false);
   let editing = $state(false);
   const lines = $derived(LINE_ORDER.map((id) => data.lines.find((l) => l.routeId === id)).filter((l): l is LineRec => !!l));
@@ -29,7 +29,7 @@
 
 <AlertList />
 
-<NearbyDepartures {data} />
+<NearbyDepartures {data} {date} {time} />
 
 <div class="row-head">
   <h2>{$t('myPlaces')}</h2>

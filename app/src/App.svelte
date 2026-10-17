@@ -50,9 +50,9 @@
         {#if $route.name === 'plan'}
           <Planner {data} />
         {:else if $route.name === 'stop'}
-          <StopBoard {data} stopId={$route.stopId} />
+          <StopBoard {data} stopId={$route.stopId} date={$route.date} time={$route.time} />
         {:else if $route.name === 'line'}
-          <LineView {data} number={$route.number} dir={$route.dir} stopId={$route.stopId} />
+          <LineView {data} number={$route.number} dir={$route.dir} stopId={$route.stopId} date={$route.date} />
         {:else if $route.name === 'from'}
           <FromSheet {data} groupId={$route.groupId} line={$route.line} dir={$route.dir} />
         {:else if $route.name === 'ride'}
@@ -64,7 +64,7 @@
         {:else if $route.name === 'bus'}
           <BusSheet {data} tripId={$route.tripId} />
         {:else}
-          <Home {data} />
+          <Home {data} date={$route.name === 'home' ? $route.date : undefined} time={$route.name === 'home' ? $route.time : undefined} />
         {/if}
       </BottomSheet>
     {:else if failed}

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'node:path';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -27,6 +28,8 @@ export default defineConfig({
       },
       workbox: {
         globIgnores: ['og.png'],
+        // the beta lives at /v2/ and is precached as its own page: never answer it with the classic app's index.html
+        navigateFallbackDenylist: [/\/v2\//],
         globPatterns: ['**/*.{js,mjs,css,html,svg,png,ico,woff2}', 'data/*.json'],
         runtimeCaching: [
           { urlPattern: ({ url }) => url.pathname.includes('/data/') && url.pathname.endsWith('.json'), handler: 'StaleWhileRevalidate', options: { cacheName: 'rb-data' } },
@@ -36,4 +39,6 @@ export default defineConfig({
     }),
   ],
   worker: { format: 'es' },
+  // the classic app and the beta (sentence) version, side by side from the same code and data
+  build: { rollupOptions: { input: { main: resolve(__dirname, 'index.html'), v2: resolve(__dirname, 'v2/index.html') } } },
 });

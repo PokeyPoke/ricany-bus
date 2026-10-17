@@ -6,6 +6,7 @@
   import { tripOverlay, highlightLine, planMarkers } from '../lib/ui';
 
   let { data }: { data: AppData } = $props();
+  const V2 = document.body.classList.contains('v2');
   $effect(() => { tripOverlay.set(null); highlightLine.set(null); planMarkers.set({}); });
 
   /** YYYYMMDD or ISO timestamp -> "d. m. yyyy" */
@@ -32,6 +33,7 @@
   <p>{$t('aboutData')}</p>
   <p>{$t('aboutUnofficial')}</p>
   <p class="muted">{$t('aboutValid', { from: fmt(data.meta.feedStart), to: fmt(data.meta.feedEnd), generated: fmt(data.meta.generatedAt) })}</p>
+  <p><a class="src" href={V2 ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}v2/`}>{V2 ? $t('classicVersion') : $t('tryNewVersion')}</a></p>
   <p><a class="src" href="https://github.com/PokeyPoke/ricany-bus" target="_blank" rel="noopener">{$t('aboutSource')}</a></p>
 </div>
 

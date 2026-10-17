@@ -44,3 +44,6 @@ h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color
 .sheet-header { display: flex; align-items: center; gap: 8px; }
 .back { font-size: 1.3rem; width: 44px; }
 .error { color: var(--bad); }
+
+/* new (sentence) version: the sentence bar replaces these */
+.v2 .nav-header, .v2 .plan-form { display: none !important; }

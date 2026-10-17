@@ -135,11 +135,12 @@
 {#if selected}
   <TripDetail it={selected} {data} onBack={back} />
 {:else}
-  <div class="sheet-header">
+  <div class="sheet-header nav-header">
     <button class="back" aria-label={$t('back')} onclick={() => navigate({ name: 'home' })}><Icon name="back" /></button>
     <h1>{$t('whereTo')}</h1>
   </div>
 
+  <div class="plan-form">
   {#if compact}
     <div class="summary">
       <button class="summary-main" aria-label={$t('editSearch')} onclick={() => (editing = true)}>
@@ -173,6 +174,7 @@
     {/if}
     {#if r.from && r.to}<button class="secondary done" onclick={() => (editing = false)}>{$t('done')}</button>{/if}
   {/if}
+  </div>
 
   {#if !r.to}
     {#if $savedPlaces.length}
