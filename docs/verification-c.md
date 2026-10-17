@@ -61,3 +61,17 @@ Stage C items 1 and 2 from `docs/superpowers/specs/2026-10-16-ricany-stage-b-des
 - Emoji UI icons replaced by `components/Icon.svelte` SVGs (users' own saved-place emoji kept).
 - Language: auto-detected from the browser on first visit (cs/sk → Czech, else English); switch on the About page.
 - Empty "Kam" field offers saved places, recent searches and nearby stops.
+
+## Clarity review batch (12 items)
+
+- Home "nearby": when stops are near but done for the day it says so and links the nearest stops (no more false "no stop within 1 km").
+- Planner: a "nothing more today – next connections: Monday 19. 10." banner when every result is on a later day.
+- Trip options on the same bus(es) are merged: the one starting latest with the least walking is kept (`dedupe` in router/plan.ts).
+- Stop board: later-day departures under one day heading instead of a date on every row.
+- Walks under 50 m are hidden in summaries and trip detail; the trip's last row names the destination.
+- Line view: "Jízdní řád – {stop}" with a "Jet odsud" button replaces the bare stop name + "Kam jedete?".
+- Zoom buttons only with a mouse; phones get locate + layers at the top right.
+- Home credits line removed (About has them).
+- Map opens on the whole network, framed above the sheet; all fits keep clear of the right-hand buttons.
+- Other stops fade with the other lines when a line or trip is shown.
+- Lines not running today: outlined badges instead of faded colour.

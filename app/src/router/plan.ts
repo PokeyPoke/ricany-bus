@@ -64,12 +64,20 @@ export function toItinerary(net: Network, j: Journey, ways: Ways = straightWays)
   };
 }
 
+/** The vehicles ridden: options on the same buses differ only in where you walk to and get on, so they count as one. */
 const signature = (it: Itinerary) =>
-  it.legs.map((l) => (l.kind === 'bus' ? `${l.tripId}@${l.serviceDate}:${l.boardPos}-${l.alightPos}` : l.kind === 'bike' ? `bike${l.from.uid}-${l.to.uid}` : '')).join('|');
+  it.legs.map((l) => (l.kind === 'bus' ? `${l.tripId}@${l.serviceDate}` : l.kind === 'bike' ? `bike${l.from.uid}-${l.to.uid}` : '')).filter(Boolean).join('|');
+const walked = (it: Itinerary) => it.legs.reduce((m, l) => m + (l.kind === 'walk' ? l.meters : 0), 0);
+/** better of two options on the same vehicles: earlier arrival, then later start (less waiting), then less walking */
+const preferred = (a: Itinerary, b: Itinerary) => a.arrive - b.arrive || b.depart - a.depart || walked(a) - walked(b);
 
-function dedupe(list: Itinerary[]): Itinerary[] {
-  const seen = new Set<string>();
-  return list.filter((it) => { const s = signature(it); if (seen.has(s)) return false; seen.add(s); return true; });
+export function dedupe(list: Itinerary[]): Itinerary[] {
+  const best = new Map<string, Itinerary>();
+  for (const it of list) {
+    const s = signature(it), cur = best.get(s);
+    if (!cur || preferred(it, cur) < 0) best.set(s, it);
+  }
+  return [...best.values()];
 }
 
 function searchForward(ctx: PlanContext, date: string, sec: number, acc: StopAccess[], egr: StopAccess[], ways: Ways, rolled = false): Itinerary[] {

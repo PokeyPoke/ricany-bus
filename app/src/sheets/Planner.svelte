@@ -1,11 +1,12 @@
 <script lang="ts">
+  import { dayName } from '../lib/days';
   import { onMount, onDestroy, untrack } from 'svelte';
   import { get } from 'svelte/store';
   import { hmToSec, secToHM, pragueNow, addDays } from '@rb/shared';
   import type { AppData } from '../lib/data';
   import { route, navigate, lastHash } from '../lib/nav';
   import { formatRoute, type Route } from '../lib/hashRoute';
-  import { t } from '../lib/i18n';
+  import { t, lang } from '../lib/i18n';
   import { bikes, bikesOk, useBikes, useDelays } from '../lib/live';
   import { getLocation } from '../lib/geoloc';
   import { addRecent, savedPlaces, recents } from '../lib/places';
@@ -208,6 +209,9 @@
     {#if result.nearOrigin === 0}<p class="warn" role="status">{$t('noStopsOrigin')}</p>{/if}
     {#if result.nearDest === 0}<p class="warn" role="status">{$t('noStopsDest')}</p>{/if}
 
+    {#if req && req.mode === 'dep' && req.date === $now.date && result.free.length && result.free.every((it) => it.date !== req.date)}
+      <p class="later-day" role="status">{$t('noMoreTodayNext', { day: dayName(result.free[0].date, $lang) })}</p>
+    {/if}
     <h2>{$t('free')}</h2>
     {#if result.free.length}
       <ul class="list">
@@ -237,6 +241,7 @@
 {/if}
 
 <style>
+  .later-day { background: var(--chip); border-radius: 10px; padding: 10px 12px; font-weight: 600; }
   .fields { display: flex; gap: 8px; align-items: center; }
   .inputs { flex: 1; min-width: 0; }
   .swap { width: 44px; min-height: 44px; display: grid; place-items: center; background: var(--chip); border-radius: 12px; }

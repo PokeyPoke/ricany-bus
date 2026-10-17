@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dayName } from '../lib/days';
   import Icon from '../components/Icon.svelte';
   import Platform from '../components/Platform.svelte';
   import { addDays, formatHM, LINE_ORDER, type FreeRouteId } from '@rb/shared';
@@ -64,14 +65,13 @@
     return best ? { b: best.item, m: best.m } : null;
   });
 
-  function dayLabel(day: number): string {
-    if (day === 1) return $t('tomorrow');
-    const d = addDays($now.date, day);
-    return new Intl.DateTimeFormat($lang === 'en' ? 'en-GB' : 'cs-CZ', { weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC' })
-      .format(new Date(Date.UTC(+d.slice(0, 4), +d.slice(4, 6) - 1, +d.slice(6, 8))));
+  /** heading over the departures of a later day (shown once, not on every row) */
+  function dayHeading(day: number): string {
+    const name = dayName(addDays($now.date, day), $lang);
+    return day === 1 ? `${$t('tomorrow')} · ${name}` : name;
   }
   function whenLabel(dep: number, delay: number | null, day: number): string {
-    if (day > 0) return dayLabel(day);
+    if (day > 0) return '';
     const diff = Math.round((dep + (delay ?? 0) - $now.sec) / 60);
     if (diff <= 0) return $t('nowShort');
     return diff < 60 ? $t('inMin', { n: diff }) : '';
@@ -99,7 +99,8 @@
   <h2>{$t('departures')}</h2>
   {#if !deps.length || deps[0].day > 0}<p class="muted">{$t('noMoreToday')}</p>{/if}
   <ul class="list">
-    {#each deps as d (`${d.tripId}-${d.serviceDate}-${d.stop}`)}
+    {#each deps as d, i (`${d.tripId}-${d.serviceDate}-${d.stop}`)}
+      {#if d.day > 0 && (i === 0 || deps[i - 1].day !== d.day)}<li class="day">{dayHeading(d.day)}</li>{/if}
       {@const delay = d.day === 0 ? tripDelay($delays, d.tripId, d.serviceDate, d.seq) : null}
       <li class="dep">
         <span class="time">{formatHM(d.dep)}</span>
@@ -125,6 +126,7 @@
   .line { min-width: 44px; display: grid; place-items: center; }
   .spacer { flex: 1; }
   .dep { display: grid; grid-template-columns: 52px auto 1fr auto; gap: 10px; align-items: center; padding: 10px 2px; }
+  .day { padding: 12px 2px 4px; font-weight: 700; font-size: 0.9rem; color: var(--muted); text-transform: capitalize; }
   .time { font-weight: 700; font-variant-numeric: tabular-nums; }
   .head { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .when { font-size: 0.85rem; color: var(--muted); text-align: right; white-space: nowrap; }

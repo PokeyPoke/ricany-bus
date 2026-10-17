@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { TINY_WALK_M } from '../lib/chain';
   import Icon from '../components/Icon.svelte';
   import Platform from '../components/Platform.svelte';
   import { untrack } from 'svelte';
@@ -58,6 +59,10 @@
     });
     return () => tripOverlay.set(null);
   });
+  const destName = $derived.by(() => {
+    const last = it.legs[it.legs.length - 1];
+    return last.kind === 'bus' ? data.stops[last.to].name : last.to.name;
+  });
 </script>
 
 <div class="sheet-header">
@@ -78,6 +83,7 @@
 <AlertList routes={it.legs.flatMap((l) => (l.kind === 'bus' ? [l.routeId] : []))} />
 <ol class="legs">
   {#each it.legs as l, i (i)}
+    {#if l.kind !== 'walk' || l.meters >= TINY_WALK_M}
     <li class="leg {l.kind}">
       <div class="time">{formatHM(l.depart)}{#if l.kind === 'bus' && $delaysOk}<DelayBadge sec={ov.boardDelay[i]} live={$delaysOk} />{/if}</div>
       <div class="body">
@@ -103,8 +109,9 @@
         {/if}
       </div>
     </li>
+    {/if}
   {/each}
-  <li class="leg end"><div class="time">{formatHM(it.arrive)}</div><div class="body"><Icon name="flag" label={$t('arrival')} /></div></li>
+  <li class="leg end"><div class="time">{formatHM(it.arrive)}</div><div class="body"><Icon name="flag" label={$t('arrival')} /> <strong>{destName}</strong></div></li>
 </ol>
 
 <style>

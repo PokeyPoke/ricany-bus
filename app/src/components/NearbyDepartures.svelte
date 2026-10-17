@@ -48,8 +48,14 @@
 {#if !$userPos}
   <button class="secondary near-btn" onclick={locate} aria-busy={state === 'locating'}><Icon name="locate" /> {state === 'locating' ? $t('locating') : $t('showNearby')}</button>
   {#if state === 'denied'}<p class="small muted">{$t('locationDenied')}</p>{:else if state === 'failed'}<p class="small muted">{$t('locationFailed')}</p>{/if}
-{:else if !boards.length}
+{:else if !near.length}
   <p class="muted">{$t('noStopNearby')}</p>
+{:else if !boards.length}
+  <!-- stops are near, the buses are just done for today: say so and link the stops (their boards show the next day) -->
+  <p class="muted">{$t('nearbyDoneToday')}</p>
+  {#each near.slice(0, STOPS) as n (n.item.id)}
+    <button class="stop-head" onclick={() => navigate({ name: 'stop', stopId: n.item.id })}><Icon name="stop" /> {n.item.name} <span class="muted small">· <Icon name="walk" size={15} /> {Math.max(1, Math.round(n.sec / 60))} min</span></button>
+  {/each}
 {:else}
   {#each boards as b (b.g.id)}
     <button class="stop-head" onclick={() => navigate({ name: 'stop', stopId: b.g.id })}><Icon name="stop" /> {b.g.name} <span class="muted small">· <Icon name="walk" size={15} /> {b.walkMin} min</span></button>

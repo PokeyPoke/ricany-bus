@@ -47,7 +47,8 @@
 
   function padding() {
     const mobile = window.innerWidth < 900;
-    return mobile ? { top: 40, left: 40, right: 40, bottom: Math.round(window.innerHeight * 0.5) } : { top: 60, right: 60, bottom: 60, left: 460 };
+    // right: clear of the map buttons; bottom: above the half-open sheet (55 % of the screen)
+    return mobile ? { top: 40, left: 40, right: 64, bottom: Math.round(window.innerHeight * 0.58) } : { top: 60, right: 72, bottom: 60, left: 460 };
   }
 
   function onClick(e: maplibregl.MapMouseEvent) {
@@ -171,9 +172,13 @@
     const onScheme = (e: MediaQueryListEvent) => { dark = e.matches; if (!fellBack) m.setStyle(dark ? MAP_STYLE_DARK : MAP_STYLE); };
     darkQ.addEventListener('change', onScheme);
     const m = new maplibregl.Map({ container: el, style: dark ? MAP_STYLE_DARK : MAP_STYLE, center: [RIC_CENTER.lon, RIC_CENTER.lat], zoom: 13, attributionControl: { compact: true } });
+    // open on the whole network, framed in the part of the map the sheet leaves visible
+    const net = bbox(data.groups.map((g) => [g.lon, g.lat] as [number, number]));
+    if (net) m.fitBounds(net, { padding: padding(), duration: 0 });
     map = m;
     if (import.meta.env.MODE !== 'production' || new URLSearchParams(location.search).has('e2e')) (window as unknown as { __rbMap?: maplibregl.Map }).__rbMap = m;
-    m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+    // phones zoom with two fingers; the +/- buttons are only for mouse users
+    if (matchMedia('(pointer: fine)').matches) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
     let styled = false, warned = false;
     const fallBack = () => {
       if (styled || fellBack) return;
@@ -222,8 +227,6 @@
     const line = sel && data.lines.find((l) => l.number === sel.number);
     setData('line-stops', line && sel ? lineStopsGeoJson(data.groups, data.stops, line, sel.dir) : { type: 'FeatureCollection', features: [] });
     for (const id of ['line-stops', 'line-stops-num']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', line ? 'visible' : 'none');
-    for (const id of ['groups', 'groups-hover']) if (map.getLayer(id)) map.setPaintProperty(id, 'icon-opacity', line ? 0.4 : 1);
-    if (map.getLayer('groups-label')) map.setPaintProperty('groups-label', 'text-opacity', line ? 0.4 : 1);
   });
   $effect(() => usePositions());
   // buses glide between reports along their line's shape (motion.ts); a ~20 fps tick runs only while one is moving
@@ -297,6 +300,9 @@
     const dim = !!($highlightLine || $tripOverlay);
     if (map.getLayer('lines')) map.setPaintProperty('lines', 'line-opacity', dim ? 0.2 : 0.9);
     if (map.getLayer('lines-casing')) map.setPaintProperty('lines-casing', 'line-opacity', dim ? 0.2 : 0.9);
+    // other stops step back too, so the chosen line or trip stands out
+    for (const id of ['groups', 'groups-hover']) if (map.getLayer(id)) map.setPaintProperty(id, 'icon-opacity', dim ? 0.3 : 1);
+    if (map.getLayer('groups-label')) map.setPaintProperty('groups-label', 'text-opacity', dim ? 0.3 : 1);
   });
   $effect(() => {
     if (!gen || !map) return;
@@ -329,9 +335,10 @@
 <style>
   .map { position: absolute; inset: 0; }
   .note { position: absolute; left: 10px; right: 64px; top: 10px; z-index: 4; background: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; box-shadow: var(--shadow); }
-  /* right-hand column: zoom (maplibre, ~88 px on touch screens), then locate, then layers — no overlap */
-  .locate { position: absolute; right: 10px; top: 108px; z-index: 4; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
+  /* right-hand column: locate, then layers; with a mouse the zoom buttons come first */
+  .locate { position: absolute; right: 10px; top: 10px; z-index: 4; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
   .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+  @media (pointer: fine) { .locate { top: 108px; } }
   @keyframes spin { to { transform: rotate(360deg); } }
   :global(.maplibregl-ctrl-group) { border-radius: 12px !important; box-shadow: var(--shadow) !important; overflow: hidden; }
   @media (prefers-color-scheme: dark) {
