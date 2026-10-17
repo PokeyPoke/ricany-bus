@@ -1,7 +1,7 @@
 # Stage B verification — 2026-10-16
 
 ## Automated
-- Unit tests: shared 22, pipeline 19, app 112 (worker included in the root `npm test`); all green. `npm run typecheck`: 0 errors.
+- Unit tests: shared 11, pipeline 22, worker 19, app 112; all green. `npm run typecheck`: 0 errors.
 - E2E (Pixel 7 viewport, mocked externals incl. `/positions`): 21 passed locally (10 Stage A + layers/About/Kam jedete?/combobox + Stage B `e2e/stage-b.spec.ts`: bus tap on map via `window.__rbMap` (enabled only with `?e2e` in production builds), bus sheet by URL, numbered line stops + `aria-current`, stop board "Jet odsud", About + ricany.cz link, share clipboard fallback toast, offline reload with the service worker).
 - CI (Node 22, ubuntu-24.04; see `ci.yml`) and Deploy, e2e-hook commit: https://github.com/PokeyPoke/ricany-bus/actions/runs/38943275988 and https://github.com/PokeyPoke/ricany-bus/actions/runs/38943276027. Stage B specs commit: CI https://github.com/PokeyPoke/ricany-bus/actions/runs/38943775835, Deploy https://github.com/PokeyPoke/ricany-bus/actions/runs/38943775888. Runs for the final docs/tidy commit are in the task report.
 - The line -> Kam jedete? -> ride e2e comes from Stage A/Task 7 (`app.spec.ts`); `stage-b.spec.ts` does not duplicate it.
@@ -30,3 +30,9 @@
 - Worker CPU/limits under peak load; behaviour after service hours (checked only during service).
 - Offline on a real device / installed PWA; only the Playwright service-worker simulation.
 - Stale/stale-on-error path against the real upstream (unit tests only).
+
+## Final whole-branch review (2026-10-17)
+- Re-ran on a clean checkout: unit tests (shared 11, pipeline 22, worker 19, app 112), `npm run typecheck` 0 errors, `npm run build`, and all 21 e2e tests pass.
+- Review Focus 1–5 (spec/plan) re-checked in code: `resolveVehicleTrip` matches on the feed's `startDate` (incl. the next calendar day for after-midnight trips); a truncated/garbage upstream body throws in `prefilter`/decode, so the Worker never caches it and serves stale (`X-Stale: 1`, ≤ 120 s) or 503; `downstreamStops` walks branch patterns in list order; the poller ticks immediately on `visibilitychange` back to visible; offline e2e is green.
+- Repo and full git history contain no Cloudflare account id (no 32-hex strings) and no owner email; the Worker workflow reads `CLOUDFLARE_ACCOUNT_ID` from secrets.
+- Minor, not fixed: a vehicle with no `startDate` in the feed resolves to no trip (bus sheet shows nothing) instead of falling back to today; PID always sends `startDate`.

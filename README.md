@@ -21,7 +21,7 @@ Mobile web app that plans trips in Říčany using **only** the free MHD Říča
 - `cd worker && npx --yes wrangler@4 deploy` — deploy the Worker manually. The "Deploy Worker" GitHub workflow (`.github/workflows/worker.yml`) deploys automatically on pushes to `main` that touch `worker/` or `shared/`, but only when the `CLOUDFLARE_API_TOKEN` secret exists (Workers Scripts:Edit on this account); otherwise it skips the deploy with a notice and you deploy manually as above.
 
 ## Known limitations
-- Offline use is configured (PWA service worker) but not exercised by the e2e tests.
+- Offline use after a first visit is covered by a Playwright service-worker e2e test, not yet tried on a real device or installed PWA.
 - The Worker decodes the full PID GTFS-RT feed every 15 s; on the Cloudflare free plan this may hit the CPU limit. The app falls back gracefully ("bez živých dat") when the Worker fails.
 - Walking and cycling times are straight-line (haversine × 1.3) estimates, not routed along streets.
 
