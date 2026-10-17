@@ -6,7 +6,8 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
-    "data": "tsx src/cli.ts"
+    "data": "tsx src/cli.ts",
+    "streets": "tsx src/streets-cli.ts"
   },
   "dependencies": {
     "@rb/shared": "*",

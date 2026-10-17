@@ -6,7 +6,8 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "data": "npm run data -w pipeline"
+    "data": "npm run data -w pipeline",
+    "streets": "npm run streets -w pipeline"
   },
   "engines": { "node": ">=20" }
 }
