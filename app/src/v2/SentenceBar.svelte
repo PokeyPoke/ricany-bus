@@ -27,7 +27,6 @@
   const my = () => $t('myLocation');
   const pickFrom = (p: PlaceRef) => go(setFrom($route, data, p, my()));
   const pickTo = (p: PlaceRef) => go(setTo($route, data, p));
-  const back = () => (history.length > 1 ? history.back() : navigate({ name: 'home' }));
 
   // when: now, depart at, arrive by, with quick choices
   const hhmm = (t: string) => t.padStart(5, '0'); // <input type="time"> needs "07:30"
@@ -52,7 +51,8 @@
 <header class="sentence">
   <div class="words">
     {#if s.kind === 'detail'}
-      <button class="word back" aria-label={$t('back')} onclick={back}><Icon name="back" size={18} /> {s.detail}</button>
+      <!-- a detail (bus, Nextbike, About) has its own back button in the panel: the bar just names it -->
+      <span class="detail-title">{s.detail}</span>
     {:else}
       {#if s.line}
         <span class="word line" style:background={lineColor}>{$t('sLine', { n: s.line })}<button class="x on-line" aria-label={$t('sClear')} onclick={() => go(clearLine($route, data, my()))}><Icon name="close" size={16} /></button></span>
@@ -113,12 +113,12 @@
 
 <style>
   .sentence { display: flex; gap: 8px; align-items: flex-start; padding: 8px 12px; padding-top: max(8px, env(safe-area-inset-top)); background: var(--bg); box-shadow: var(--shadow); z-index: 10; }
-  .words { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 1.05rem; min-height: 48px; }
+  .words { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 1.05rem; min-height: 48px; }
   .glue { color: var(--muted); }
   .word { min-height: 40px; padding: 0 12px; border-radius: 12px; background: var(--chip); color: var(--accent); font-weight: 800; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .word.empty { color: var(--muted); font-weight: 700; border: 2px dashed var(--line); background: transparent; }
   .word.open { outline: 2px solid var(--accent); }
-  .word.back { color: var(--fg); }
+  .detail-title { font-weight: 800; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .word.line { color: #fff; padding-right: 2px; }
   .word-wrap { display: inline-flex; align-items: center; }
   .x { width: 32px; min-height: 40px; display: grid; place-items: center; color: var(--muted); }
