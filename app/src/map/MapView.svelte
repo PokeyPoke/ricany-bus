@@ -158,14 +158,47 @@
     untrack(() => { popup?.remove(); popup = null; });
   });
 
+  // The map stays around the free network: panning stops ~4 km past the outermost stops and zooming out stops at about
+  // the whole network. The fence widens to take in my position and a trip's ends, and every framing the app does itself
+  // (open, locate, trip, line) is let through first and then included, so nothing the app shows is ever out of reach.
+  const MARGIN_M = 4000;
+  type Box = [[number, number], [number, number]];
+  const padBox = (b: Box, m: number): Box => {
+    const dLat = m / 111_320, dLon = m / (111_320 * Math.cos((((b[0][1] + b[1][1]) / 2) * Math.PI) / 180));
+    return [[b[0][0] - dLon, b[0][1] - dLat], [b[1][0] + dLon, b[1][1] + dLat]];
+  };
+  const union = (a: Box, b: Box): Box => [[Math.min(a[0][0], b[0][0]), Math.min(a[0][1], b[0][1])], [Math.max(a[1][0], b[1][0]), Math.max(a[1][1], b[1][1])]];
+  function fence(): Box {
+    const pts: [number, number][] = data.groups.map((g) => [g.lon, g.lat]);
+    const me = get(userPos), pm = get(planMarkers);
+    for (const p of [me, pm.from, pm.to]) if (p) pts.push([p.lon, p.lat]);
+    return padBox(bbox(pts)!, MARGIN_M);
+  }
+  /** fence = the network area, widened by whatever is on screen now (after one of the app's own framings) */
+  function lock() {
+    if (!map) return;
+    const v = map.getBounds();
+    map.setMaxBounds(union(fence(), [[v.getWest(), v.getSouth()], [v.getEast(), v.getNorth()]]));
+  }
+  /** let one of the app's own camera moves through the fence, then close it around the result */
+  let framing = false;
+  function framed(move: () => void) {
+    if (!map) return;
+    framing = true;
+    map.setMaxBounds(null);
+    move();
+    map.once('moveend', () => { framing = false; lock(); });
+  }
+
   /** frame my position above the sheet: street level when precise, the whole accuracy circle when not */
   function showMe() {
     const p = get(userPos);
     if (!map || !p) return;
-    map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
-    if (p.acc <= 150) { map.flyTo({ center: [p.lon, p.lat], zoom: 16, padding: padding() }); return; }
+    const m = map;
+    m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+    if (p.acc <= 150) { framed(() => m.flyTo({ center: [p.lon, p.lat], zoom: 16, padding: padding() })); return; }
     const dLat = p.acc / 111_320, dLon = p.acc / (111_320 * Math.cos((p.lat * Math.PI) / 180));
-    map.fitBounds([[p.lon - dLon, p.lat - dLat], [p.lon + dLon, p.lat + dLat]], { padding: padding(), maxZoom: 16, duration: 600 });
+    framed(() => m.fitBounds([[p.lon - dLon, p.lat - dLat], [p.lon + dLon, p.lat + dLat]], { padding: padding(), maxZoom: 16, duration: 600 }));
   }
   // after the locate button, follow the first precise fix once it arrives (GPS a few seconds after the coarse answer)
   let followUntil = 0;
@@ -196,6 +229,7 @@
     const net = bbox(data.groups.map((g) => [g.lon, g.lat] as [number, number]));
     if (net) m.fitBounds(net, { padding: padding(), duration: 0 });
     map = m;
+    lock();
     if (import.meta.env.MODE !== 'production' || new URLSearchParams(location.search).has('e2e')) (window as unknown as { __rbMap?: maplibregl.Map }).__rbMap = m;
     // phones zoom with two fingers; the +/- buttons are only for mouse users
     if (matchMedia('(pointer: fine)').matches) m.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
@@ -334,6 +368,7 @@
     marker('to', $planMarkers.to, 'to', 'B');
   });
   $effect(() => { if (gen) marker('me', $userPos, 'me'); });
+  $effect(() => { void $userPos; void $planMarkers; if (gen && !framing) untrack(lock); });
   // how sure the phone is: a pale circle of the reported accuracy around the dot
   $effect(() => {
     if (!gen || !map) return;
@@ -351,11 +386,12 @@
     if (!gen || !map || !$focusPoints?.length) return;
     const b = bbox($focusPoints);
     if (!b) return;
-    if ($focusPoints.length === 1) map.easeTo({ center: $focusPoints[0], zoom: Math.max(map.getZoom(), 15), padding: padding() });
+    const m = map, pts = $focusPoints;
+    if (pts.length === 1) framed(() => m.easeTo({ center: pts[0], zoom: Math.max(m.getZoom(), 15), padding: padding() }));
     else {
       // easeTo({ padding }) leaves a persistent camera padding that fitBounds would add its own on top of
-      map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
-      map.fitBounds(b, { padding: padding(), maxZoom: 16, duration: 600 });
+      m.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+      framed(() => m.fitBounds(b, { padding: padding(), maxZoom: 16, duration: 600 }));
     }
   });
 </script>
