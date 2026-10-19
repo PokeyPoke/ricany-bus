@@ -7,6 +7,7 @@
   import { now, pickTarget } from '../lib/ui';
   import PlaceInput from '../components/PlaceInput.svelte';
   import Icon from '../components/Icon.svelte';
+  import LangButton from '../components/LangButton.svelte';
   import { sentenceOf, whenOf, withWhen, whenLabel, setFrom, setTo, clearTo, clearLine, swap, fromPlace, toPlace, type When } from './sentence';
 
   let { data }: { data: AppData } = $props();
@@ -74,6 +75,7 @@
       <button class="word" class:open={editing === 'when'} aria-expanded={editing === 'when'} onclick={() => (editing = editing === 'when' ? null : 'when')}>{wLabel}</button>
     {/if}
   </div>
+  <LangButton />
   <button class="icon" aria-label={$t('about')} onclick={() => navigate({ name: 'about' })}><Icon name="info" size={22} /></button>
 </header>
 
