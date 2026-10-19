@@ -378,15 +378,27 @@ const en: Record<Key, string> = {
 export type Lang = 'cs' | 'en';
 export const dict: Record<Lang, Record<Key, string>> = { cs, en };
 
-/** first visit: Czech for Czech/Slovak browsers, English otherwise; afterwards the saved choice (About page) */
+/**
+ * Until someone picks one (EN / CZ in the top bar): the browser's language if the app has it,
+ * taken in the browser's order of preference (Slovak reads as Czech), else Czech.
+ */
 const browserLang = (): Lang => {
   const langs = typeof navigator !== 'undefined' ? (navigator.languages?.length ? navigator.languages : [navigator.language]) : [];
-  return langs.some((l) => /^(cs|sk)\b/i.test(l ?? '')) || !langs.length ? 'cs' : 'en';
+  for (const l of langs) {
+    if (/^(cs|sk)\b/i.test(l ?? '')) return 'cs';
+    if (/^en\b/i.test(l ?? '')) return 'en';
+  }
+  return 'cs';
 };
-const saved = load<Lang | null>('rb.lang', null);
-export const lang = writable<Lang>(saved === 'en' || saved === 'cs' ? saved : browserLang());
+// 'rb.lang' used to store the default too, so it may not be a choice: only the new key counts
+const saved = load<Lang | null>('rb.langChoice', null);
+const initial: Lang = saved === 'en' || saved === 'cs' ? saved : browserLang();
+export const lang = writable<Lang>(initial);
+let first = true;
 lang.subscribe((v) => {
-  save('rb.lang', v);
+  // only a choice is remembered (not the default), so the default keeps following the browser
+  if (!first) save('rb.langChoice', v);
+  first = false;
   if (typeof document !== 'undefined') document.documentElement.lang = v;
 });
 
