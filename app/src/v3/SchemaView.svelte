@@ -255,6 +255,8 @@
   .ctl { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
   .ctl.txt { font-size: 1.4rem; font-weight: 700; }
   .note { position: absolute; left: 10px; right: 64px; top: 10px; z-index: 4; background: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; box-shadow: var(--shadow); }
+  /* the app's Map / Diagram switch sits top left */
+  :global(body.v2) .note { top: 62px; }
   .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   /* the diagram is printed on white: keep it white in dark mode too, framed by the app's dark chrome */
