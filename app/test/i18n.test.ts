@@ -29,12 +29,25 @@ describe('first-visit language', () => {
     vi.stubGlobal('navigator', { languages, language: languages[0] });
     return get((await import('../src/lib/i18n')).lang);
   };
-  it('follows the browser: Czech or Slovak → Czech, anything else → English', async () => {
+  it('follows the browser when it is Czech (or Slovak) or English, else Czech', async () => {
     expect(await fresh(['cs-CZ', 'en'])).toBe('cs');
     expect(await fresh(['sk'])).toBe('cs');
+    expect(await fresh(['en-US', 'cs'])).toBe('en');
     expect(await fresh(['de-DE', 'en-GB'])).toBe('en');
+    expect(await fresh(['de-DE', 'pl'])).toBe('cs');
+    expect(await fresh([])).toBe('cs');
+  });
+  it('remembers a choice, not the default', async () => {
+    vi.resetModules();
+    const store = memStorage();
+    vi.stubGlobal('localStorage', store);
+    vi.stubGlobal('navigator', { languages: ['cs'], language: 'cs' });
+    const { lang } = await import('../src/lib/i18n');
+    expect(store.getItem('rb.langChoice')).toBeNull();
+    lang.set('en'); lang.set('cs');
+    expect(store.getItem('rb.langChoice')).toBe(JSON.stringify('cs'));
   });
   it('keeps a saved choice', async () => {
-    expect(await fresh(['en-US'], { 'rb.lang': JSON.stringify('cs') })).toBe('cs');
+    expect(await fresh(['en-US'], { 'rb.langChoice': JSON.stringify('cs') })).toBe('cs');
   });
 });
