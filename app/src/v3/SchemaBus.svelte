@@ -6,8 +6,12 @@
 
 <!-- a bus waiting to start its trip is drawn hollow (opaque, so the diagram underneath does not show through) -->
 <g transform={`translate(${x} ${y}) scale(${k}) translate(-24 -27)`}>
-  <!-- white halo, so it reads over the lines -->
-  <g fill="#fff" stroke="#fff" stroke-width="5" stroke-linejoin="round">
+  <!-- soft shadow and a white halo lift it off the diagram -->
+  <g fill="#000" opacity="0.28" transform="translate(0 2.5)" stroke="#000" stroke-width="7" stroke-linejoin="round">
+    <rect x="5" y="3" width="38" height="42" rx="9" />
+    <rect x="9" y="40" width="10" height="10" rx="4" /><rect x="29" y="40" width="10" height="10" rx="4" />
+  </g>
+  <g fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round">
     <rect x="5" y="3" width="38" height="42" rx="9" />
     <rect x="9" y="40" width="10" height="10" rx="4" /><rect x="29" y="40" width="10" height="10" rx="4" />
   </g>

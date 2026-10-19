@@ -25,10 +25,10 @@
   const CW = SCHEMA_CONTENT[1][0] - SCHEMA_CONTENT[0][0], CH = SCHEMA_CONTENT[1][1] - SCHEMA_CONTENT[0][1];
   const fitScale = () => { const v = view(); return Math.min(v.w / CW, v.h / CH); };
   const MAX_S = 6;
-  /** bus icon height on screen: 22 px over the whole diagram, growing to 34 px once zoomed in to street level */
+  /** bus icon height on screen: 32 px over the whole diagram, growing to 46 px once zoomed in to street level */
   const busPx = $derived.by(() => {
     const f = fitScale();
-    return 22 + 12 * Math.max(0, Math.min(1, (s - f) / (2 - f)));
+    return 32 + 14 * Math.max(0, Math.min(1, (s - f) / (2 - f)));
   });
 
   function clamp() {
