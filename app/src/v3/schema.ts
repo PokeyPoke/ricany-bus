@@ -4,16 +4,26 @@ import type { Itinerary } from '../router/types';
 import { resolveVehicleTrip } from '../lib/live';
 import type { Network } from '../router/network';
 import STOPS from './schemaStops.json';
+import PATHS from './schemaPaths.json';
 
 /**
  * The city's line diagram (schema-linek-MHD.pdf, as SVG in /schema/linky.svg) used as the map.
  * Coordinates are the diagram's own points (733.65 × 529.56); every stop group has its dot's centre,
- * read from the PDF's vector drawing and checked by eye (scripts in the PR).
+ * read from the PDF's vector drawing and checked by eye (scripts/schema).
  */
 export const SCHEMA_W = 733.654;
 export const SCHEMA_H = 529.559;
 export type XY = [number, number];
 const POS = STOPS as unknown as Record<string, XY>;
+/**
+ * The drawn line between two consecutive stops of a route (`L1731:U1881Z11>U1883Z11`), traced along the
+ * diagram's own strokes of that line's colour, and where each stop sits on that line (`L1731:U1881Z11`):
+ * in a bundle of parallel lines a stop's dot is on one of them, its name between them.
+ */
+const LINES = PATHS as unknown as { at: Record<string, XY>; paths: Record<string, XY[]> };
+
+/** the part of the diagram with the network on it (the cleaned SVG keeps the page size, so positions stay valid) */
+export const SCHEMA_CONTENT: [XY, XY] = [[88, 46], [702, 452]];
 
 /** the diagram's own line colours (they differ from PID's), so badges match what is drawn */
 export const SCHEMA_COLORS: Record<FreeRouteId, { color: string; text: string }> = {
@@ -27,7 +37,6 @@ export const SCHEMA_COLORS: Record<FreeRouteId, { color: string; text: string }>
 };
 
 export const groupXY = (data: AppData, gi: number): XY | null => POS[data.groups[gi]?.id] ?? null;
-export const stopXY = (data: AppData, stopIdx: number): XY | null => groupXY(data, data.stops[stopIdx].group);
 
 /** the stop group nearest to a place (within `maxM`), for things that are not stops (my position, an address) */
 export function nearestGroup(data: AppData, p: { lat: number; lon: number }, maxM = 1500): number | null {
@@ -40,30 +49,60 @@ export function nearestGroup(data: AppData, p: { lat: number; lon: number }, max
   return best;
 }
 
-/** a direction of a line as a polyline through its stops' dots (repeated groups dropped) */
-export function directionPath(data: AppData, line: LineRec, dir: number): XY[] {
-  const d = line.directions[dir];
-  if (!d) return [];
-  const out: XY[] = [];
-  let last = -1;
-  for (const s of d.stops) {
-    const g = data.stops[s].group;
-    if (g === last) continue;
-    last = g;
-    const p = groupXY(data, g);
-    if (p) out.push(p);
-  }
-  return out;
+/** a stop group on a route's own line (or its dot when the line was not traced there) */
+const onLine = (routeId: string, gid: string): XY | null => LINES.at[`${routeId}:${gid}`] ?? POS[gid] ?? null;
+/** the drawn line from one stop to the next (straight when it could not be traced) */
+function hop(routeId: string, a: string, b: string): XY[] {
+  const traced = LINES.paths[`${routeId}:${a}>${b}`];
+  if (traced) return traced;
+  const pa = onLine(routeId, a), pb = onLine(routeId, b);
+  return pa && pb ? [pa, pb] : [];
 }
 
-/** the bus legs of a trip as polylines on the diagram */
-export function tripPaths(data: AppData, it: Itinerary): { routeId: FreeRouteId; pts: XY[] }[] {
+export type SchemaPath = { routeId: FreeRouteId; pts: XY[]; stops: XY[] };
+/** a route through stops (indices into data.stops) as the diagram draws it, with its stops on that line */
+function traced(data: AppData, routeId: FreeRouteId, stopIdx: number[]): SchemaPath {
+  const gids: string[] = [];
+  for (const s of stopIdx) {
+    const id = data.groups[data.stops[s].group]?.id;
+    if (id && POS[id] && id !== gids[gids.length - 1]) gids.push(id);
+  }
+  const pts: XY[] = [];
+  for (let i = 0; i + 1 < gids.length; i++) {
+    const h = hop(routeId, gids[i], gids[i + 1]);
+    pts.push(...(pts.length ? h.slice(1) : h));
+  }
+  const stops = gids.map((g) => onLine(routeId, g)).filter((p): p is XY => !!p);
+  return { routeId, pts: pts.length > 1 ? pts : stops, stops };
+}
+
+/** a direction of a line along its drawn line */
+export function directionPath(data: AppData, line: LineRec, dir: number): SchemaPath | null {
+  const d = line.directions[dir];
+  return d ? traced(data, line.routeId, d.stops) : null;
+}
+
+/** the bus legs of a trip along their drawn lines */
+export function tripPaths(data: AppData, it: Itinerary): SchemaPath[] {
   return it.legs.flatMap((l) => {
     if (l.kind !== 'bus') return [];
-    const stops = data.timetable.patterns[l.pattern].stops.slice(l.boardPos, l.alightPos + 1);
-    const pts = stops.map((s) => stopXY(data, s)).filter((p): p is XY => !!p);
-    return pts.length > 1 ? [{ routeId: l.routeId, pts }] : [];
+    const p = traced(data, l.routeId, data.timetable.patterns[l.pattern].stops.slice(l.boardPos, l.alightPos + 1));
+    return p.pts.length > 1 ? [p] : [];
   });
+}
+
+/** the point a fraction t (0..1) of the way along a polyline */
+function at(pts: XY[], t: number): XY {
+  const segs = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+  let left = t * segs.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < segs.length; i++) {
+    if (left <= segs[i] || i === segs.length - 1) {
+      const k = segs[i] > 0 ? Math.min(1, left / segs[i]) : 0;
+      return [pts[i][0] + k * (pts[i + 1][0] - pts[i][0]), pts[i][1] + k * (pts[i + 1][1] - pts[i][1])];
+    }
+    left -= segs[i];
+  }
+  return pts[0];
 }
 
 /** where along a→b (0..1) the point p is, and how far from that straight segment (metres, roughly) */
@@ -78,7 +117,7 @@ function along(p: { lat: number; lon: number }, a: { lat: number; lon: number },
 
 /**
  * A live bus on the diagram: between the two stops of its trip it is between (by its GPS position),
- * at the same fraction of the way. Falls back to the line's stop sequences when the trip is unknown.
+ * at the same fraction of the way along the drawn line. Falls back to the line's stop sequences when the trip is unknown.
  */
 export function busXY(data: AppData, v: Vehicle, netFor: (d: string) => Network): XY | null {
   let seqs: number[][];
@@ -89,10 +128,12 @@ export function busXY(data: AppData, v: Vehicle, netFor: (d: string) => Network)
   for (const seq of seqs) {
     for (let i = 0; i + 1 < seq.length; i++) {
       const a = data.stops[seq[i]], b = data.stops[seq[i + 1]];
-      const pa = stopXY(data, seq[i]), pb = stopXY(data, seq[i + 1]);
-      if (!pa || !pb) continue;
+      const ga = data.groups[a.group]?.id, gb = data.groups[b.group]?.id;
+      if (!ga || !gb || !POS[ga] || !POS[gb]) continue;
       const { t, m } = along(v, a, b);
-      if (!best || m < best.m) best = { m, xy: [pa[0] + t * (pb[0] - pa[0]), pa[1] + t * (pb[1] - pa[1])] };
+      if (best && m >= best.m) continue;
+      const h = ga === gb ? [POS[ga]] : hop(v.routeId, ga, gb);
+      if (h.length) best = { m, xy: h.length > 1 ? at(h, t) : h[0] };
     }
   }
   return best && best.m < 1500 ? best.xy : null;

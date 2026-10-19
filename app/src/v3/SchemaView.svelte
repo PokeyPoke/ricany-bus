@@ -11,7 +11,7 @@
   import { tripOverlay, highlightLine, focusPoints, userPos, planMarkers, lineSelection, now, stopTap, pickTarget, mapPick } from '../lib/ui';
   import Icon from '../components/Icon.svelte';
   import SchemaBus from './SchemaBus.svelte';
-  import { SCHEMA_W, SCHEMA_H, SCHEMA_COLORS, groupXY, nearestGroup, directionPath, tripPaths, busXY, bounds, type XY } from './schema';
+  import { SCHEMA_W, SCHEMA_H, SCHEMA_CONTENT, SCHEMA_COLORS, groupXY, nearestGroup, directionPath, tripPaths, busXY, bounds, type XY } from './schema';
 
   let { data }: { data: AppData } = $props();
 
@@ -22,12 +22,13 @@
   let animate = $state(false);
   /** the part of the screen the sheet leaves free (the sheet is ~55 % high on phones, a 400 px side panel on desktop) */
   const view = () => (w < 900 ? { x: 12, y: 12, w: w - 24 - 56, h: h * 0.43 - 12 } : { x: 412, y: 12, w: w - 424 - 56, h: h - 24 });
-  const fitScale = () => { const v = view(); return Math.min(v.w / SCHEMA_W, v.h / SCHEMA_H); };
+  const CW = SCHEMA_CONTENT[1][0] - SCHEMA_CONTENT[0][0], CH = SCHEMA_CONTENT[1][1] - SCHEMA_CONTENT[0][1];
+  const fitScale = () => { const v = view(); return Math.min(v.w / CW, v.h / CH); };
   const MAX_S = 6;
-  /** bus icon height on screen: 16 px over the whole diagram, growing to 28 px once zoomed in to street level */
+  /** bus icon height on screen: 22 px over the whole diagram, growing to 34 px once zoomed in to street level */
   const busPx = $derived.by(() => {
     const f = fitScale();
-    return 16 + 12 * Math.max(0, Math.min(1, (s - f) / (2 - f)));
+    return 22 + 12 * Math.max(0, Math.min(1, (s - f) / (2 - f)));
   });
 
   function clamp() {
@@ -49,7 +50,7 @@
     clamp();
     if (anim) { animate = true; setTimeout(() => (animate = false), 350); }
   }
-  const whole = (anim = true) => frame([[0, 0], [SCHEMA_W, SCHEMA_H]], 10, anim);
+  const whole = (anim = true) => frame(SCHEMA_CONTENT, 10, anim);
 
   // ── gestures: drag, pinch, wheel, tap ─────────────────────────────────────────────────────
   const ptrs = new Map<number, { x: number; y: number }>();
@@ -129,9 +130,9 @@
     const line = sel ? data.lines.find((l) => l.number === sel.number) : rid ? data.lines.find((l) => l.routeId === rid) : null;
     if (!line) return [];
     const dirs = sel ? [sel.dir] : line.directions.map((_, i) => i);
-    return dirs.map((d) => ({ color: color(line.routeId), pts: directionPath(data, line, d) })).filter((p) => p.pts.length > 1);
+    return dirs.map((d) => directionPath(data, line, d)).filter((p) => !!p && p.pts.length > 1).map((p) => ({ ...p!, color: color(line.routeId) }));
   });
-  const trip = $derived($tripOverlay ? tripPaths(data, $tripOverlay).map((p) => ({ color: color(p.routeId), pts: p.pts })) : []);
+  const trip = $derived($tripOverlay ? tripPaths(data, $tripOverlay).map((p) => ({ ...p, color: color(p.routeId) })) : []);
   const emphasis = $derived([...linePaths, ...trip]);
   const ptsAttr = (pts: XY[]) => pts.map((p) => p.join(',')).join(' ');
 
@@ -209,17 +210,14 @@
   <div class="paper" class:animate style:transform={`translate(${tx}px, ${ty}px) scale(${s})`}>
     <img src={`${import.meta.env.BASE_URL}schema/linky.svg`} width={SCHEMA_W} height={SCHEMA_H} alt="" draggable="false" />
     <svg width={SCHEMA_W} height={SCHEMA_H} viewBox={`0 0 ${SCHEMA_W} ${SCHEMA_H}`} aria-hidden="true">
-      <!-- the city's logo and QR code are covered: this is not the city's app -->
-      <rect x="40" y="44" width="162" height="50" rx="10" fill="#fff" />
-      <text x="121" y="66" text-anchor="middle" class="credit">{$t('schemaCredit')}</text>
-      <text x="121" y="78" text-anchor="middle" class="credit">ricany.cz</text>
-      <rect x="50" y="298" width="122" height="48" fill="#fff" />
+      <!-- the diagram (cleaned of its legend, logo, roads and landmarks) is the city's: say so -->
+      <text x="96" y="470" class="credit">{$t('schemaCredit')} · ricany.cz</text>
       {#if emphasis.length}
         <rect x="0" y="0" width={SCHEMA_W} height={SCHEMA_H} fill="#fff" opacity="0.6" />
         {#each emphasis as p, i (i)}
-          <polyline points={ptsAttr(p.pts)} fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
-          <polyline points={ptsAttr(p.pts)} fill="none" stroke={p.color} stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-          {#each p.pts as q, j (j)}<circle cx={q[0]} cy={q[1]} r="3.4" fill="#fff" stroke={p.color} stroke-width="2" />{/each}
+          <polyline points={ptsAttr(p.pts)} fill="none" stroke="#fff" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" />
+          <polyline points={ptsAttr(p.pts)} fill="none" stroke={p.color} stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+          {#each p.stops as q, j (j)}<circle cx={q[0]} cy={q[1]} r="3.4" fill="#fff" stroke={p.color} stroke-width="2" />{/each}
         {/each}
       {/if}
       {#if selectedXY}<circle cx={selectedXY[0]} cy={selectedXY[1]} r="8" fill="none" stroke="#1d2a3a" stroke-width="2.5" />{/if}
@@ -229,7 +227,7 @@
       {/if}
       <!-- buses stay readable at every zoom: a fixed size on screen, smaller over the whole diagram -->
       {#each buses as b (b.tripId)}
-        <SchemaBus x={b.xy[0]} y={b.xy[1]} k={busPx / 54 / s} color={b.color} number={b.number} waiting={b.waiting} />
+        <SchemaBus x={b.xy[0]} y={b.xy[1]} k={busPx / 54 / s} color={b.color} text={b.text} number={b.number} waiting={b.waiting} />
       {/each}
       {#if markA}<g><circle cx={markA[0]} cy={markA[1] - 11} r="6.5" fill="#1d7a35" stroke="#fff" stroke-width="1.6" /><text x={markA[0]} y={markA[1] - 8.6} text-anchor="middle" class="bus" fill="#fff">A</text></g>{/if}
       {#if markB}<g><circle cx={markB[0]} cy={markB[1] - 11} r="6.5" fill="#c62828" stroke="#fff" stroke-width="1.6" /><text x={markB[0]} y={markB[1] - 8.6} text-anchor="middle" class="bus" fill="#fff">B</text></g>{/if}
