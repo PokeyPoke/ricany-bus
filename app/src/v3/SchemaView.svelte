@@ -10,6 +10,7 @@
   import { getLocation } from '../lib/geoloc';
   import { tripOverlay, highlightLine, focusPoints, userPos, planMarkers, lineSelection, now, stopTap, pickTarget, mapPick } from '../lib/ui';
   import Icon from '../components/Icon.svelte';
+  import SchemaBus from './SchemaBus.svelte';
   import { SCHEMA_W, SCHEMA_H, SCHEMA_COLORS, groupXY, nearestGroup, directionPath, tripPaths, busXY, bounds, type XY } from './schema';
 
   let { data }: { data: AppData } = $props();
@@ -23,6 +24,11 @@
   const view = () => (w < 900 ? { x: 12, y: 12, w: w - 24 - 56, h: h * 0.43 - 12 } : { x: 412, y: 12, w: w - 424 - 56, h: h - 24 });
   const fitScale = () => { const v = view(); return Math.min(v.w / SCHEMA_W, v.h / SCHEMA_H); };
   const MAX_S = 6;
+  /** bus icon height on screen: 16 px over the whole diagram, growing to 28 px once zoomed in to street level */
+  const busPx = $derived.by(() => {
+    const f = fitScale();
+    return 16 + 12 * Math.max(0, Math.min(1, (s - f) / (2 - f)));
+  });
 
   function clamp() {
     s = Math.max(fitScale() * 0.9, Math.min(MAX_S, s));
@@ -221,11 +227,9 @@
         <circle cx={meXY[0] + 7} cy={meXY[1] - 7} r="7" fill="#1a73e8" opacity="0.18" />
         <circle cx={meXY[0] + 7} cy={meXY[1] - 7} r="3.6" fill="#1a73e8" stroke="#fff" stroke-width="1.5" />
       {/if}
+      <!-- buses stay readable at every zoom: a fixed size on screen, smaller over the whole diagram -->
       {#each buses as b (b.tripId)}
-        <g opacity={b.waiting ? 0.45 : 1}>
-          <circle cx={b.xy[0]} cy={b.xy[1]} r="6.5" fill={b.color} stroke="#fff" stroke-width="1.6" />
-          <text x={b.xy[0]} y={b.xy[1] + 2.4} text-anchor="middle" class="bus" fill={b.text}>{b.number}</text>
-        </g>
+        <SchemaBus x={b.xy[0]} y={b.xy[1]} k={busPx / 54 / s} color={b.color} number={b.number} waiting={b.waiting} />
       {/each}
       {#if markA}<g><circle cx={markA[0]} cy={markA[1] - 11} r="6.5" fill="#1d7a35" stroke="#fff" stroke-width="1.6" /><text x={markA[0]} y={markA[1] - 8.6} text-anchor="middle" class="bus" fill="#fff">A</text></g>{/if}
       {#if markB}<g><circle cx={markB[0]} cy={markB[1] - 11} r="6.5" fill="#c62828" stroke="#fff" stroke-width="1.6" /><text x={markB[0]} y={markB[1] - 8.6} text-anchor="middle" class="bus" fill="#fff">B</text></g>{/if}
