@@ -6,14 +6,9 @@
   import { tripOverlay, highlightLine, planMarkers } from '../lib/ui';
 
   let { data }: { data: AppData } = $props();
-  // the versions side by side: classic, the one-sentence beta (/v2/), the beta on the city's line diagram (/v3/)
-  const here = document.body.classList.contains('v3') ? 'v3' : document.body.classList.contains('v2') ? 'v2' : 'classic';
-  const B = import.meta.env.BASE_URL;
-  const versions = [
-    { id: 'classic', href: B, label: 'classicVersion' },
-    { id: 'v2', href: `${B}v2/`, label: 'tryNewVersion' },
-    { id: 'v3', href: `${B}v3/`, label: 'trySchemaVersion' },
-  ] as const;
+  // the classic app (/classic/) and the sentence app (the default) link to each other
+  const classic = !document.body.classList.contains('v2');
+  const other = classic ? { href: import.meta.env.BASE_URL, label: 'newVersion' as const } : { href: `${import.meta.env.BASE_URL}classic/`, label: 'classicVersion' as const };
   $effect(() => { tripOverlay.set(null); highlightLine.set(null); planMarkers.set({}); });
 
   /** YYYYMMDD or ISO timestamp -> "d. m. yyyy" */
@@ -35,7 +30,7 @@
   <p>{$t('aboutData')}</p>
   <p>{$t('aboutUnofficial')}</p>
   <p class="muted">{$t('aboutValid', { from: fmt(data.meta.feedStart), to: fmt(data.meta.feedEnd), generated: fmt(data.meta.generatedAt) })}</p>
-  {#each versions.filter((v) => v.id !== here) as v (v.id)}<p><a class="src" href={v.href}>{$t(v.label)}</a></p>{/each}
+  <p><a class="src" href={other.href}>{$t(other.label)}</a></p>
   <p><a class="src" href="https://github.com/PokeyPoke/ricany-bus" target="_blank" rel="noopener">{$t('aboutSource')}</a></p>
 </div>
 

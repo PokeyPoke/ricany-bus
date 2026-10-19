@@ -13,6 +13,9 @@
   import LineView from '../sheets/LineView.svelte';
   import BottomSheet from '../components/BottomSheet.svelte';
   import MapView from '../map/MapView.svelte';
+  import SchemaView from '../v3/SchemaView.svelte';
+  import MapModeSwitch from '../components/MapModeSwitch.svelte';
+  import { mapMode } from '../lib/mapMode';
   import SentenceBar from './SentenceBar.svelte';
   import { route, navigate, setRouteRewrite } from '../lib/nav';
   import { stopTap } from '../lib/ui';
@@ -50,7 +53,8 @@
   {#if !online}<div class="banner" role="status">{$t('offline')}</div>{/if}
   <main class="stage">
     {#if data}
-      <MapView {data} />
+      {#if $mapMode === 'schema'}<SchemaView {data} />{:else}<MapView {data} />{/if}
+      <MapModeSwitch />
       <BottomSheet>
         {#if $route.name === 'plan'}
           <Planner {data} />

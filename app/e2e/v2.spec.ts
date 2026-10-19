@@ -1,16 +1,16 @@
 import { test, expect, stops } from './fixtures';
 
-// the beta (sentence) version at /v2/: every screen is "Z … do … · kdy"
+// the app (the sentence version, at the root): every screen is "Z … do … · kdy"
 const busiest = [...stops].sort((x, y) => y.lines.length - x.lines.length)[0];
 
-test('v2: the sentence drives board → trip → back, and the time follows', async ({ page }) => {
-  await page.goto('./v2/');
+test('the sentence drives board → trip → back, and the time follows', async ({ page }) => {
+  await page.goto('./');
   const bar = page.locator('header.sentence');
   await expect(bar).toContainText('Moje poloha');
   await expect(bar.getByRole('button', { name: 'kam?' })).toBeVisible();
 
   // a stop as the start: its departures
-  await page.goto(`./v2/#/stop/${busiest.id}`);
+  await page.goto(`./#/stop/${busiest.id}`);
   await expect(bar).toContainText(busiest.name);
   await expect(page.locator('.dep').first()).toBeVisible();
 
@@ -33,7 +33,13 @@ test('v2: the sentence drives board → trip → back, and the time follows', as
   await expect(page.getByText(/Odjezdy od:/)).toBeVisible();
 });
 
-test('v2: about links back to the classic version', async ({ page }) => {
-  await page.goto('./v2/#/about');
-  await expect(page.getByRole('link', { name: 'Zpět na klasickou verzi' })).toBeVisible();
+test('about links back to the classic version', async ({ page }) => {
+  await page.goto('./#/about');
+  await expect(page.getByRole('link', { name: 'Klasická verze' })).toBeVisible();
+});
+
+test('the old /v2/ address opens the app', async ({ page }) => {
+  await page.goto(`./v2/#/stop/${busiest.id}`);
+  await expect(page).toHaveURL(new RegExp(`/ricany-bus/#/stop/${busiest.id}$`));
+  await expect(page.locator('header.sentence')).toContainText(busiest.name);
 });

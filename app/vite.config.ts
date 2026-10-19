@@ -30,8 +30,8 @@ export default defineConfig({
       },
       workbox: {
         globIgnores: ['og.png'],
-        // the beta lives at /v2/ and is precached as its own page: never answer it with the classic app's index.html
-        navigateFallbackDenylist: [/\/v[23]\//],
+        // the classic app and the old beta addresses are their own pages: never answer them with the app's index.html
+        navigateFallbackDenylist: [/\/(classic|v[23])\//],
         // take over open pages as soon as a worker activates, so "load" (skip waiting) reloads into the new version
         clientsClaim: true,
         importScripts: ['sw-handover.js'],
@@ -45,5 +45,5 @@ export default defineConfig({
   ],
   worker: { format: 'es' },
   // the classic app and the beta (sentence) version, side by side from the same code and data
-  build: { rollupOptions: { input: { main: resolve(__dirname, 'index.html'), v2: resolve(__dirname, 'v2/index.html'), v3: resolve(__dirname, 'v3/index.html') } } },
+  build: { rollupOptions: { input: { main: resolve(__dirname, 'index.html'), classic: resolve(__dirname, 'classic/index.html'), v2: resolve(__dirname, 'v2/index.html'), v3: resolve(__dirname, 'v3/index.html') } } },
 });

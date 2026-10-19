@@ -6,14 +6,14 @@ const b = stops[line1.directions[0].stops[line1.directions[0].stops.length - 1]]
 const busiest = [...stops].sort((x, y) => y.lines.length - x.lines.length)[0];
 
 test('home shows search, saved places and the 7 free lines', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./classic/');
   await expect(page.getByRole('button', { name: /Kam jedete/ }).first()).toBeVisible();
   await expect(page.getByRole('button', { name: /^Linky \d+$/ })).toHaveCount(7);
   await expect(page.getByRole('button', { name: /Přidat místo/ })).toBeVisible();
 });
 
 test('language switch in the top bar, persists across reloads', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./classic/');
   await page.getByRole('button', { name: 'English' }).click();
   await expect(page.getByRole('button', { name: /Where to\?/ }).first()).toBeVisible();
   await page.reload();
@@ -21,7 +21,7 @@ test('language switch in the top bar, persists across reloads', async ({ page })
 });
 
 test('plans a free-only trip and opens its timeline', async ({ page }) => {
-  await page.goto(`./#/plan?mode=now&from=${place(a)}&to=${place(b)}`);
+  await page.goto(`./classic/#/plan?mode=now&from=${place(a)}&to=${place(b)}`);
   await expect(page.getByRole('heading', { name: /Zdarma/ })).toBeVisible();
   const card = page.locator('.card').first();
   await expect(card).toBeVisible({ timeout: 15_000 });
@@ -43,7 +43,7 @@ test('plans a free-only trip and opens its timeline', async ({ page }) => {
 test.describe('with location', () => {
   test.use({ geolocation: { latitude: a.lat, longitude: a.lon }, permissions: ['geolocation'] });
   test('≤ 3 taps: search a stop from my location', async ({ page }) => {
-    await page.goto('./');
+    await page.goto('./classic/');
     await page.getByRole('button', { name: /Kam jedete/ }).first().click(); // tap 1
     await page.getByLabel('Kam', { exact: true }).fill(b.name.slice(0, 6));  // typing
     await page.getByRole('option', { name: new RegExp(b.name.slice(0, 6)) }).first().click(); // tap 2
@@ -52,7 +52,7 @@ test.describe('with location', () => {
     expect(Number(from.split(',')[0])).toBeCloseTo(a.lat, 4);
     await expect(page.locator('.card').first()).toBeVisible({ timeout: 15_000 });
   });  test('home lists departures from the nearest stop', async ({ page }) => {
-    await page.goto('./');
+    await page.goto('./classic/');
     await expect(page.getByRole('heading', { name: 'Odjezdy v okolí' })).toBeVisible();
     await expect(page.getByRole('button', { name: new RegExp(`^ ?${a.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`) })).toBeVisible();
     await expect(page.locator('.dep').first()).toBeVisible();
@@ -60,7 +60,7 @@ test.describe('with location', () => {
 });
 
 test('stop board lists departures and the nearest bike', async ({ page }) => {
-  await page.goto(`./#/stop/${busiest.id}`);
+  await page.goto(`./classic/#/stop/${busiest.id}`);
   await expect(page.getByRole('heading', { name: new RegExp(busiest.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) })).toBeVisible();
   await expect(page.locator('.dep').first()).toBeVisible();
   const bike = page.locator('button.bike');
@@ -73,13 +73,13 @@ test('stop board lists departures and the nearest bike', async ({ page }) => {
 test.describe('live data down', () => {
   test.use({ delaysStatus: 503 });
   test('shows the no-live-data marker', async ({ page }) => {
-    await page.goto(`./#/stop/${busiest.id}`);
+    await page.goto(`./classic/#/stop/${busiest.id}`);
     await expect(page.getByText('bez živých dat').first()).toBeVisible({ timeout: 10_000 });
   });
 });
 
 test('line view shows a per-stop timetable', async ({ page }) => {
-  await page.goto('./#/line/3');
+  await page.goto('./classic/#/line/3');
   await expect(page.getByRole('button', { name: 'Po–Pá' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('.tt-row').first()).toBeVisible();
   await page.getByRole('button', { name: 'Ne', exact: true }).click();
@@ -87,7 +87,7 @@ test('line view shows a per-stop timetable', async ({ page }) => {
 });
 
 test('saved place persists', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./classic/');
   await page.getByRole('button', { name: /Přidat místo/ }).click();
   await page.getByLabel('Název').fill('Domů');
   await page.getByLabel('Adresa, místo nebo zastávka').fill(b.name.slice(0, 6));
@@ -99,18 +99,18 @@ test('saved place persists', async ({ page }) => {
 });
 
 test('explains when no stop is near the start', async ({ page }) => {
-  await page.goto(`./#/plan?mode=now&from=49.9,14.65,Daleko&to=${place(b)}`);
+  await page.goto(`./classic/#/plan?mode=now&from=49.9,14.65,Daleko&to=${place(b)}`);
   await expect(page.getByText(/Do 1,2 km od výchozího místa/)).toBeVisible({ timeout: 15_000 });
 });
 
 test('line 1 weekday timetable opens on a stop with service (regression)', async ({ page }) => {
-  await page.goto('./#/line/1');
+  await page.goto('./classic/#/line/1');
   await expect(page.locator('.tt-row').first()).toBeVisible();
   await expect(page.getByText('V tento den linka nejede')).toHaveCount(0);
 });
 
 test('layers panel: Nextbike off by default, switches toggle and persist', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./classic/');
   await page.getByRole('button', { name: 'Vrstvy mapy' }).click();
   const bikes = page.getByRole('switch', { name: 'Stanice Nextbike' });
   await expect(bikes).toHaveAttribute('aria-checked', 'false');
@@ -124,7 +124,7 @@ test('layers panel: Nextbike off by default, switches toggle and persist', async
 });
 
 test('line view -> Jet odsud -> downstream stop -> direct ride list', async ({ page }) => {
-  await page.goto('./#/line/3');
+  await page.goto('./classic/#/line/3');
   await page.locator('ol.stops li button').nth(3).click();
   await expect(page.locator('ol.stops button[aria-current="true"]')).toHaveCount(1);
   await page.getByRole('button', { name: 'Jet odsud' }).click();
@@ -135,7 +135,7 @@ test('line view -> Jet odsud -> downstream stop -> direct ride list', async ({ p
 });
 
 test('about page opens from the top bar, in cs and en', async ({ page }) => {
-  await page.goto('./');
+  await page.goto('./classic/');
   await page.getByRole('button', { name: 'O aplikaci' }).click();
   await expect(page).toHaveURL(/#\/about/);
   await expect(page.getByText('Neoficiální aplikace')).toBeVisible();
@@ -144,7 +144,7 @@ test('about page opens from the top bar, in cs and en', async ({ page }) => {
 });
 
 test('place input is a keyboard-operable combobox', async ({ page }) => {
-  await page.goto('./#/plan?mode=now');
+  await page.goto('./classic/#/plan?mode=now');
   const box = page.getByRole('combobox', { name: 'Kam', exact: true });
   await box.fill(b.name.slice(0, 6));
   await expect(page.getByRole('option').first()).toBeVisible();

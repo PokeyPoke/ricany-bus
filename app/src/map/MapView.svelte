@@ -405,6 +405,8 @@
 <style>
   .map { position: absolute; inset: 0; }
   .note { position: absolute; left: 10px; right: 64px; top: 10px; z-index: 4; background: var(--bg); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; box-shadow: var(--shadow); }
+  /* the app's Map / Diagram switch sits top left */
+  :global(body.v2) .note { top: 62px; }
   /* right-hand column: locate, then layers; with a mouse the zoom buttons come first */
   .locate { position: absolute; right: 10px; top: 10px; z-index: 4; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; background: var(--bg); color: var(--fg); box-shadow: var(--shadow); }
   .spin { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
