@@ -11,6 +11,8 @@
 
 <style>
   .mode { position: absolute; left: 10px; top: 10px; z-index: 5; display: flex; padding: 3px; gap: 2px; border-radius: 12px; background: var(--bg); box-shadow: var(--shadow); }
+  /* on a wide screen the panel covers the left 400 px */
+  @media (min-width: 900px) { .mode { left: 412px; } }
   button { min-height: 38px; padding: 0 12px; border-radius: 9px; font-weight: 700; font-size: 0.9rem; color: var(--muted); }
   button[aria-pressed='true'] { background: var(--accent); color: var(--accent-fg, #fff); }
 </style>
