@@ -14,6 +14,7 @@
   import BottomSheet from './components/BottomSheet.svelte';
   import MapView from './map/MapView.svelte';
   import Icon from './components/Icon.svelte';
+  import LangButton from './components/LangButton.svelte';
   import { route, navigate } from './lib/nav';
   import { t } from './lib/i18n';
   import { loadData, daysLeft, type AppData } from './lib/data';
@@ -40,6 +41,7 @@
   <header class="topbar">
     <!-- the one way into search: always visible, on every screen -->
     <button class="search" onclick={() => navigate({ name: 'plan', mode: 'now' })}><Icon name="search" size={22} /> <span>{$t('whereTo')}</span></button>
+    <LangButton />
     <button class="icon" aria-label={$t('about')} onclick={() => navigate({ name: 'about' })}><Icon name="info" size={22} /></button>
   </header>
   <UpdateBar />

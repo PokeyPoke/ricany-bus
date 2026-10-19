@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { AppData } from '../lib/data';
   import { navigate } from '../lib/nav';
-  import { t, lang } from '../lib/i18n';
+  import { t } from '../lib/i18n';
   import Icon from '../components/Icon.svelte';
   import { tripOverlay, highlightLine, planMarkers } from '../lib/ui';
 
@@ -28,11 +28,6 @@
   <h1>{$t('about')}</h1>
 </div>
 
-<div class="seg lang" role="group" aria-label={$t('language')}>
-  <button aria-pressed={$lang === 'cs'} onclick={() => lang.set('cs')}>Čeština</button>
-  <button aria-pressed={$lang === 'en'} onclick={() => lang.set('en')}>English</button>
-</div>
-
 <div class="about">
   <p>{$t('aboutIntro')}</p>
   <p><Icon name="access" /> {$t('aboutAccess')}</p>
@@ -45,7 +40,6 @@
 </div>
 
 <style>
-  .lang { margin: 4px 0 8px; }
   .about p { line-height: 1.5; }
   .about a { color: var(--accent); }
   .src { display: inline-flex; align-items: center; min-height: 44px; }

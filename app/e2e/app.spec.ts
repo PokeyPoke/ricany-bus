@@ -12,10 +12,9 @@ test('home shows search, saved places and the 7 free lines', async ({ page }) =>
   await expect(page.getByRole('button', { name: /Přidat místo/ })).toBeVisible();
 });
 
-test('language switch to English persists across reloads', async ({ page }) => {
-  await page.goto('./#/about');
-  await page.getByRole('button', { name: 'English' }).click();
+test('language switch in the top bar, persists across reloads', async ({ page }) => {
   await page.goto('./');
+  await page.getByRole('button', { name: 'English' }).click();
   await expect(page.getByRole('button', { name: /Where to\?/ }).first()).toBeVisible();
   await page.reload();
   await expect(page.getByRole('button', { name: /Where to\?/ }).first()).toBeVisible();
