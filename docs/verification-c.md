@@ -89,3 +89,11 @@ Every screen is one sentence, **Z [odkud] do [kam] · [kdy]**, in place of the t
   and is carried across links (`carryWhen` via `setRouteRewrite`). A stop tapped on the map after a start stop becomes the destination.
 - The classic screens' own headers and planner form are hidden in the beta (`.v2 .nav-header`, `.v2 .plan-form`).
 - About links between the two versions. The service worker never answers `/v2/` with the classic `index.html`.
+
+## Beta: the city's line diagram as the map (/v3/)
+
+`/ricany-bus/v3/` is the one-sentence beta with the town's own line diagram (schema-linek-MHD.pdf, ricany.cz) in place of the street map.
+- `public/schema/linky.svg`: the PDF as SVG (`pdftocairo -svg`); the city's logo and QR code are covered in the app (it is not the city's app) and the source is credited on the diagram and in About.
+- `src/v3/schemaStops.json`: each stop group's dot on the diagram, read from the PDF's vector drawing (small coloured shapes = stop dots, larger rings = termini) and matched to the stop names in the PDF text; three were corrected by hand after an overlay check.
+- `src/v3/schema.ts`: diagram colours (they differ from PID's; the beta's badges use them), line and trip paths through the stops' dots, live buses placed between the two stops of their trip at the fraction of the way their GPS position gives.
+- `src/v3/SchemaView.svelte`: drag/pinch/wheel zoom, tap a stop (same sentence rules as v2) or a bus; selected stop ringed, line or trip drawn over a faded diagram, my position at my nearest stop.
